@@ -3,6 +3,9 @@ COMPLETE PROJECT STRUCTURE
 
 faction_td/
 ├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── build.yml           [CI: regenerates assets and builds the ROM on every push/PR]
 ├── README.md
 ├── STRUCTURE.md
 ├── FILE_LIST.txt
@@ -131,4 +134,5 @@ TOTALS:
 - Tools (Python):          3
 - Documentation:           4    (README.md, STRUCTURE.md, FILE_LIST.txt, prompts_graficos.md)
 - Config/build:            2    (makefile, .gitignore)
-- TOTAL:                   135 files
+- CI:                      1    (.github/workflows/build.yml)
+- TOTAL:                   136 files

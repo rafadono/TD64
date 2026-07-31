@@ -1,0 +1,69 @@
+name: Build ROM
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout TD64
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Pillow
+        run: pip install Pillow
+
+      # Regenerates the committed sprite/terrain PNGs from scratch. This also
+      # doubles as a smoke test for the generator scripts themselves.
+      - name: Generate sprites and terrain assets
+        run: |
+          python tools/gen_sprites.py
+          python tools/gen_maps.py
+
+      # libdragon/ is gitignored (it's a ~90MB vendor checkout, see
+      # .libdragon/config.json) so CI clones the same upstream source that
+      # `libdragon init` would set up locally.
+      - name: Clone libdragon SDK source
+        run: git clone --depth 1 https://github.com/DragonMinded/libdragon.git libdragon
+
+      - name: Pull libdragon toolchain image
+        run: docker pull ghcr.io/dragonminded/libdragon:latest
+
+      # Same sequence documented in README.md's "Building Directly with
+      # Docker" section: bootstrap the SDK inside the ephemeral toolchain
+      # container (it only ships the compiler, not libdragon itself), then
+      # build the ROM. `tools` must stay -j1 - parallel build has a race
+      # condition in libdragon's own Makefile (n64dso-msym.o).
+      - name: Build ROM
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src" -w /src ghcr.io/dragonminded/libdragon:latest bash -c "
+            set -e
+            cd /src/libdragon
+            make install-mk
+            make libdragon
+            make -j1 tools
+            make install
+            make -j1 tools-install
+            cd /src
+            make clean
+            make all
+          "
+
+      - name: Upload ROM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TD64-rom
+          path: |
+            build/TD64.z64
+            build/TD64.elf
+          if-no-files-found: warn

@@ -600,6 +600,14 @@ The game is designed to build against the official Libdragon release found
 on GitHub and Docker Hub, without altering any internal library file.
 Compiler tweaks are isolated to the project's local `makefile`.
 
+### Continuous Integration
+
+Every push and pull request runs [`.github/workflows/build.yml`](.github/workflows/build.yml),
+which regenerates the sprite/terrain assets and builds `TD64.z64` with the
+same Docker-based toolchain documented below, failing the check if the ROM
+doesn't compile. The resulting ROM is uploaded as a workflow artifact for
+each run.
+
 ### Prerequisites
 
 - Docker Desktop installed and running.

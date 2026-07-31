@@ -1,0 +1,37 @@
+# Vendored SDK (~90MB, managed by the `libdragon` CLI / Docker;
+# not a real git submodule yet - see .libdragon/config.json)
+libdragon/
+
+# Build artifacts
+build/
+*.z64
+*.elf
+*.dfs
+*.o
+
+# Generated assets
+filesystem/
+*.sprite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backup files
+*.bak
+*.tmp
+
+# Don't ignore sprite source files
+!assets/sprites/*.png

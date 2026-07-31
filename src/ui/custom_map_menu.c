@@ -110,12 +110,13 @@ void custom_map_menu_render(const GameState* game) {
 
         char line[64];
         if (slot_used[i]) {
-            // Peek at the saved map's enemy faction/difficulty for a useful
-            // one-line summary instead of just "saved".
+            // Peek at the saved map's name/enemy faction/difficulty for a
+            // useful one-line summary instead of just "saved".
             CustomMapSave data;
             if (st == SAVE_STATUS_READY && save_read_custom_map(i, &data)) {
+                const char* name = data.name[0] ? data.name : T(STR_CMM_SLOT_SAVED);
                 snprintf(line, sizeof(line), "SLOT %c: %s vs %s (%d)", 'A'+i,
-                         T(STR_CMM_SLOT_SAVED), FACTION_NAME((int)data.enemy_faction), data.difficulty);
+                         name, FACTION_NAME((int)data.enemy_faction), data.difficulty);
             } else {
                 snprintf(line, sizeof(line), "SLOT %c: %s", 'A'+i, T(STR_CMM_SLOT_SAVED));
             }

@@ -18,15 +18,18 @@
 // Serialized format of a custom map (what gets saved to the Controller Pak).
 // grid[] uses the same values as TerrainType (terrain.h), declared as
 // uint8_t here so this module doesn't need to depend on terrain.h.
+#define SAVE_NAME_LEN 12  // 11 usable chars + null terminator
+
 typedef struct {
     uint8_t  grid[SAVE_GRID_W * SAVE_GRID_H];
-    uint8_t  path_type;      // 0=curve 1=zigzag 2=spiral 3=straight (see pathfinding.c)
+    uint8_t  path_type;      // 0=curve 1=zigzag 2=spiral 3=straight 4=custom/painted (see pathfinding.c)
     uint8_t  enemy_faction;  // FactionId (factions.h) of the attacking side
     uint8_t  difficulty;     // 1-5, informational label shown in the menu/editor
                              // (fixed campaign maps also store a difficulty label
                              // that isn't read anywhere for scaling yet — same here)
     uint16_t starting_gold;
     uint8_t  starting_lives;
+    char     name[SAVE_NAME_LEN]; // player-entered name, always null-terminated; empty = unnamed
     uint8_t  used;           // 0 = empty/invalid slot
 } CustomMapSave;
 
@@ -38,13 +41,14 @@ typedef struct {
 
 typedef enum {
     SAVE_STATUS_UNKNOWN = 0,
-    SAVE_STATUS_NO_PAK,        // no Controller Pak plugged into port 1
+    SAVE_STATUS_NO_PAK,        // no Controller Pak found on any of the 4 ports
     SAVE_STATUS_UNFORMATTED,   // a pak is present, but unformatted or corrupt
     SAVE_STATUS_READY,         // ready to read/write
 } SaveStatus;
 
-// Detects and validates the Controller Pak on port 1. Does real I/O (Joybus)
-// — call only when entering a screen that needs it, not every frame.
+// Scans all 4 controller ports and validates whichever Controller Pak it
+// finds (any port works, not just port 1 - see save.c). Does real I/O
+// (Joybus) — call only when entering a screen that needs it, not every frame.
 SaveStatus save_system_check(void);
 
 // Last result cached by save_system_check(), without doing I/O again.

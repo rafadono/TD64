@@ -71,6 +71,71 @@ static const int FACTION_TO_CAMPAIGN[FACTION_COUNT] = {
     [FACTION_VEILSTORM] = 3,
 };
 
+#define CAMPAIGN_COUNT (int)(sizeof(CAMPAIGNS) / sizeof(CAMPAIGNS[0]))
+
+// =============================================================================
+// GAME DIFFICULTY
+//
+// A single overall scale the player picks before a campaign (see the
+// STATE_DIFFICULTY_SELECT screen in menu.c), layered on top of the
+// DIFFICULTY_* balance constants in game_config.h. Harder settings make
+// enemies tougher/faster and towers more expensive, while giving less
+// starting gold/lives; it intentionally does NOT touch tower damage/range/
+// cooldown directly, since nerfing the player's own towers on "Hard" would
+// feel bad rather than challenging.
+// =============================================================================
+
+typedef struct {
+    float enemy_hp, enemy_dmg, enemy_speed, tower_cost, start_gold, start_lives;
+} DifficultyPreset;
+
+static const DifficultyPreset DIFFICULTY_PRESETS[GAME_DIFF_COUNT] = {
+    [GAME_DIFF_EASY]    = { 0.80f, 0.80f, 0.90f, 0.85f, 1.30f, 1.25f },
+    [GAME_DIFF_NORMAL]  = { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f },
+    [GAME_DIFF_HARD]    = { 1.30f, 1.20f, 1.10f, 1.15f, 0.85f, 0.80f },
+    [GAME_DIFF_EXTREME] = { 1.60f, 1.40f, 1.25f, 1.35f, 0.70f, 0.60f },
+};
+
+static GameDifficulty current_difficulty = GAME_DIFF_NORMAL;
+
+void game_difficulty_set(GameDifficulty d) {
+    if (d >= 0 && d < GAME_DIFF_COUNT) current_difficulty = d;
+}
+
+GameDifficulty game_difficulty_get(void) {
+    return current_difficulty;
+}
+
+static int count_completed_campaigns(uint8_t mask) {
+    int n = 0;
+    for (int i = 0; i < 4; i++) if (mask & (1 << i)) n++;
+    return n;
+}
+
+bool game_difficulty_unlocked(GameDifficulty d) {
+    if (d == GAME_DIFF_EASY || d == GAME_DIFF_NORMAL) return true;
+
+    // Permissive default: if there's no readable progress (no Controller
+    // Pak, or nothing saved yet), don't lock a first-time or pak-less
+    // player out of higher difficulties.
+    GameProgress progress;
+    if (save_system_check() != SAVE_STATUS_READY || !save_read_progress(&progress)) {
+        return true;
+    }
+
+    int completed = count_completed_campaigns(progress.campaigns_completed);
+    if (d == GAME_DIFF_HARD)    return completed >= 1;
+    if (d == GAME_DIFF_EXTREME) return completed >= CAMPAIGN_COUNT;
+    return true;
+}
+
+float game_difficulty_enemy_hp_mult(void)      { return DIFFICULTY_PRESETS[current_difficulty].enemy_hp; }
+float game_difficulty_enemy_dmg_mult(void)     { return DIFFICULTY_PRESETS[current_difficulty].enemy_dmg; }
+float game_difficulty_enemy_speed_mult(void)   { return DIFFICULTY_PRESETS[current_difficulty].enemy_speed; }
+float game_difficulty_tower_cost_mult(void)    { return DIFFICULTY_PRESETS[current_difficulty].tower_cost; }
+float game_difficulty_starting_gold_mult(void) { return DIFFICULTY_PRESETS[current_difficulty].start_gold; }
+float game_difficulty_starting_lives_mult(void){ return DIFFICULTY_PRESETS[current_difficulty].start_lives; }
+
 // Starts the correct campaign for the faction the player picked
 void campaign_start_with_faction(GameState* game, FactionId chosen) {
     int camp_id = FACTION_TO_CAMPAIGN[chosen];
@@ -80,8 +145,6 @@ void campaign_start_with_faction(GameState* game, FactionId chosen) {
 FactionId campaign_get_rival(FactionId f) {
     return FACTION_RIVAL[f];
 }
-
-#define CAMPAIGN_COUNT (int)(sizeof(CAMPAIGNS) / sizeof(CAMPAIGNS[0]))
 
 int campaign_get_count(void) {
     return CAMPAIGN_COUNT;
@@ -104,9 +167,10 @@ void campaign_start(GameState* game, int campaign_id) {
     // Load first map
     map_load(&game->map, c->map_ids[0]);
 
-    // Init game values from map
-    game->gold  = (int)(game->map.starting_gold  * DIFFICULTY_STARTING_GOLD_MULT);
-    game->lives = (int)(game->map.starting_lives * DIFFICULTY_STARTING_LIVES_MULT);
+    // Init game values from map, layering the player-chosen difficulty
+    // scale on top of the dev-tunable DIFFICULTY_* base multipliers
+    game->gold  = (int)(game->map.starting_gold  * DIFFICULTY_STARTING_GOLD_MULT  * game_difficulty_starting_gold_mult());
+    game->lives = (int)(game->map.starting_lives * DIFFICULTY_STARTING_LIVES_MULT * game_difficulty_starting_lives_mult());
     game->lives_wave_start = game->lives;
     game->wave  = 0;
     game->enemies_remaining = 0;
@@ -166,7 +230,7 @@ void campaign_advance(GameState* game) {
     map_load(&game->map, map_id);
 
     // Keep gold and score, reset lives
-    game->lives = (int)(game->map.starting_lives * DIFFICULTY_STARTING_LIVES_MULT);
+    game->lives = (int)(game->map.starting_lives * DIFFICULTY_STARTING_LIVES_MULT * game_difficulty_starting_lives_mult());
     game->lives_wave_start = game->lives;
     game->wave  = 0;
     game->enemies_remaining = 0;

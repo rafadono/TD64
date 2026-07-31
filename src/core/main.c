@@ -59,9 +59,13 @@ static void handle_play_input(float dt) {
     // Place unit
     if (kd.a && game.selected_unit_type >= 0) {
         UnitType ut = (UnitType)game.selected_unit_type;
-        if (game_can_place(&game, ut)) {
-            float px = cursor_gx * TERRAIN_GRID_SIZE + 4;
-            float py = cursor_gy * TERRAIN_GRID_SIZE + 4;
+        float px = cursor_gx * TERRAIN_GRID_SIZE + 4;
+        float py = cursor_gy * TERRAIN_GRID_SIZE + 4;
+        // PATH tiles are the enemy's route (custom maps with a free-form
+        // painted path, see pathfinding.c) - never buildable, same as you
+        // wouldn't be able to build in the middle of the road.
+        bool blocked = terrain_get(&game.map.terrain, px, py) == TERRAIN_PATH;
+        if (!blocked && game_can_place(&game, ut)) {
             Entity* e = unit_spawn_tower(game.player_faction, ut, px, py);
             if (e) {
                 game.gold -= game_unit_cost(game.player_faction, ut);
@@ -213,6 +217,7 @@ int main(void) {
             }
 
             case STATE_MAIN_MENU:
+            case STATE_DIFFICULTY_SELECT:
             case STATE_FACTION_SELECT:
             case STATE_PAUSED:
             case STATE_GAME_OVER:

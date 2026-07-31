@@ -39,11 +39,14 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_TERRAIN_MOUNTAIN]        = { "MOUNTAIN",                   "MONTANA" },
     [STR_TERRAIN_DESERT]          = { "DESERT",                     "DESIERTO" },
     [STR_TERRAIN_SNOW]            = { "SNOW",                       "NIEVE" },
+    [STR_TERRAIN_LAVA]            = { "LAVA",                       "LAVA" },
+    [STR_TERRAIN_PATH]            = { "PATH",                       "CAMINO" },
 
     [STR_PATH_CURVE]              = { "CURVE",                      "CURVA" },
     [STR_PATH_ZIGZAG]             = { "ZIGZAG",                     "ZIGZAG" },
     [STR_PATH_SPIRAL]             = { "SPIRAL",                     "ESPIRAL" },
     [STR_PATH_STRAIGHT]           = { "STRAIGHT",                   "RECTA" },
+    [STR_PATH_CUSTOM]             = { "CUSTOM (PAINT PATH TILES)",  "CUSTOM (PINTAR CAMINO)" },
 
     [STR_EDITOR_TERRAIN_LABEL]    = { "TERRAIN:%s",                 "TERRENO:%s" },
     [STR_EDITOR_PATH_LABEL]       = { "PATH:%s",                    "PATH:%s" },
@@ -53,8 +56,24 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_EDITOR_NEW]              = { "NEW",                        "NUEVO" },
     [STR_EDITOR_GOLD_LABEL]       = { "STARTING GOLD:%d (Z)",       "ORO INICIAL:%d (Z)" },
     [STR_EDITOR_CONTROLS_HINT]    = {
-        "D-PAD MOVE  A PAINT  L/R TERRAIN  C-U/D PATH  C-L/R ENEMY/DIFF  START SAVE  Z GOLD  B EXIT",
-        "D-PAD MOVER  A PINTAR  L/R TERRENO  C-U/D PATH  C-I/D ENEMIGO/DIF  START GUARDAR  Z ORO  B SALIR"
+        "D-PAD MOVE  A PAINT  L/R TERRAIN  Z TAB  C-U/D ADJUST  C-LEFT NAME  START SAVE  B EXIT",
+        "D-PAD MOVER  A PINTAR  L/R TERRENO  Z PESTANA  C-A/B AJUSTAR  C-IZQ NOMBRE  START GUARDAR  B SALIR"
+    },
+    [STR_EDITOR_NAME_LABEL]       = { "NAME:%s",                    "NOMBRE:%s" },
+    [STR_EDITOR_NAMING_HINT]      = {
+        "D-PAD SELECT  A TYPE  Z BACKSPACE  B DONE",
+        "D-PAD SELECCIONAR  A ESCRIBIR  Z BORRAR  B LISTO"
+    },
+
+    [STR_DIFF_SELECT_TITLE]       = { "SELECT DIFFICULTY",          "SELECCIONA DIFICULTAD" },
+    [STR_DIFF_EASY]               = { "EASY",                       "FACIL" },
+    [STR_DIFF_NORMAL]             = { "NORMAL",                     "NORMAL" },
+    [STR_DIFF_HARD]               = { "HARD",                       "DIFICIL" },
+    [STR_DIFF_EXTREME]            = { "EXTREME",                    "EXTREMA" },
+    [STR_DIFF_LOCKED_BADGE]       = { "LOCK",                       "BLOQ" },
+    [STR_DIFF_LOCKED_HINT]        = {
+        "LOCKED - COMPLETE MORE CAMPAIGNS TO UNLOCK",
+        "BLOQUEADO - COMPLETA MAS CAMPANAS PARA DESBLOQUEAR"
     },
 
     [STR_PAK_READY]               = { "PAK READY",                  "PAK LISTO" },

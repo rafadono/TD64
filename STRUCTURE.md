@@ -70,7 +70,7 @@ faction_td/
 | **maps.h** | MapData struct, map loading functions (fixed and custom) |
 | **maps.c** | Definition of the 4 fixed maps (Greenfield, Desert, Frozen, Volcanic) + `map_load_custom()` for saved/edited maps |
 | **pathfinding.h** | Waypoints, Path, path-following functions |
-| **pathfinding.c** | Pathfinding algorithms (curve, zigzag, spiral, straight); `path_follow()` consumes distance per frame instead of moving at a fixed speed (prevents a fast enemy from skipping a waypoint) |
+| **pathfinding.c** | Pathfinding algorithms (curve, zigzag, spiral, straight) plus `path_init_from_terrain()`, which traces a free-form path painted with `TERRAIN_PATH` tiles in the map editor into real waypoints; `path_follow()` consumes distance per frame instead of moving at a fixed speed (prevents a fast enemy from skipping a waypoint) |
 
 ### `src/game/` - Game Logic (4 files)
 
@@ -78,8 +78,8 @@ faction_td/
 |---------|-----------|
 | **game.h** | Match logic prototypes, includes `game_start_custom_map()` |
 | **game.c** | Game loop, staggered wave spawning (`game_process_spawns`), economy, victory/defeat, custom map startup |
-| **campaign.h** | Campaign struct, campaign functions |
-| **campaign.c** | 4 campaigns (one per faction), rival selection, map progression, saves the best score to the Controller Pak on campaign completion |
+| **campaign.h** | Campaign struct, campaign functions, `GameDifficulty` enum (Easy/Normal/Hard/Extreme) and its accessors |
+| **campaign.c** | 4 campaigns (one per faction), rival selection, map progression, saves the best score to the Controller Pak on campaign completion; also implements the difficulty scale and its unlock rules (Hard needs 1 completed campaign, Extreme needs all 4) |
 
 ### `src/systems/` - Auxiliary Systems (14 files)
 
@@ -96,7 +96,7 @@ faction_td/
 | **audio.h** | Modular audio system header |
 | **audio.c** | Background music (BGM) and sound effect (SFX) playback/init via wav64 and libdragon's mixer — no audio assets loaded yet |
 | **save.h** | Serialized format for custom maps (`CustomMapSave`) and progress (`GameProgress`), `SaveStatus` enum |
-| **save.c** | Controller Pak layer: detection/validation, reading/writing "notes" (mempak's high-level API, never raw sector access), formatting only under explicit confirmation |
+| **save.c** | Controller Pak layer: scans all 4 controller ports for a pak, reading/writing "notes" (mempak's high-level API, never raw sector access), formatting only under explicit confirmation |
 | **lang.h** | Language/StringId enums and the `T(StringId)` localization accessor |
 | **lang.c** | English/Spanish string table (`STRINGS[STR_COUNT][LANG_COUNT]`), runtime language cycling |
 
@@ -105,13 +105,13 @@ faction_td/
 | File | Purpose |
 |---------|-----------|
 | **menu.h** | Menu prototypes |
-| **menu.c** | Main menu (4 options: play campaign / custom maps / language / credits), faction select (also reused to start custom maps), pause, game over/victory |
+| **menu.c** | Main menu (4 options: play campaign / custom maps / language / credits), the Easy/Normal/Hard/Extreme difficulty select screen, faction select (also reused to start custom maps), pause, game over/victory |
 | **ui.h** | HUD prototypes |
 | **ui.c** | In-game HUD: health bar, gold, build panel, tooltips |
 | **map_editor.h** | Map editor prototypes |
-| **map_editor.c** | Editor: paint terrain on the grid, pick path type / enemy faction / difficulty / starting gold / starting lives (cycled via Z, adjusted via C-up/C-down), save to the Controller Pak or play without saving |
+| **map_editor.c** | Editor: paint terrain (including free-form path tiles) on the grid, pick path shape / enemy faction / difficulty / starting gold / starting lives (cycled via Z, adjusted via C-up/C-down), name the map via an on-screen keyboard, clear the grid (hold L+R+B), save to the Controller Pak or play without saving |
 | **custom_map_menu.h** | Custom map menu prototypes |
-| **custom_map_menu.c** | Lists the 8 Controller Pak slots (play/edit/delete), handles pak formatting with confirmation |
+| **custom_map_menu.c** | Lists the 8 Controller Pak slots with their saved name (play/edit/delete), handles pak formatting with confirmation |
 
 ### `src/resources/` - Asset Loading (2 files)
 
@@ -156,9 +156,10 @@ veilstorm_projectile.png
 tile_grass.png    tile_water.png    tile_mountain.png
 tile_desert.png   tile_snow.png     tile_lava.png     tile_path.png
 ```
-(`tile_lava` and `tile_path` are generated but not assigned to any
-`TerrainType` yet — the volcanic map uses `tile_water` for the "lava veins"
-because of its slowing effect.)
+(`tile_lava` maps to `TERRAIN_LAVA` — a hazard that heavily slows enemies,
+used for Volcanic Pass's lava rivers. `tile_path` maps to `TERRAIN_PATH`,
+the road tiles a custom map's free-form path is painted with in the map
+editor; towers can't be placed on it.)
 
 **4 reference maps** (320x240px, generated but NOT used at runtime — see README):
 ```

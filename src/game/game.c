@@ -47,6 +47,11 @@ void game_start_custom_map(GameState* game, FactionId faction, const CustomMapSa
     game->current_map_index = 0;
     game->is_custom_map     = true;
 
+    // Custom maps have their own per-map difficulty label (saved->difficulty)
+    // instead of the global campaign difficulty scale - make sure a
+    // Hard/Extreme pick from a previous campaign run doesn't leak in here.
+    game_difficulty_set(GAME_DIFF_NORMAL);
+
     map_load_custom(&game->map, saved);
 
     // Custom maps use the gold/lives the player configured in the editor
@@ -230,7 +235,7 @@ bool game_can_place(const GameState* game, UnitType t) {
 int game_unit_cost(FactionId f, UnitType t) {
     const UnitStats* s = unit_get_stats(f, t);
     if (!s) return 999999;
-    return (int)(s->cost * DIFFICULTY_TOWER_COST_MULT);
+    return (int)(s->cost * DIFFICULTY_TOWER_COST_MULT * game_difficulty_tower_cost_mult());
 }
 
 int game_upgrade_cost(const Entity* e) {

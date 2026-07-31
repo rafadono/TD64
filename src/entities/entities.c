@@ -140,10 +140,12 @@ Entity* unit_spawn_runner(FactionId f, UnitType t, const Path* path, int wave) {
         e->tint.b = (uint8_t)(e->tint.b * tint_mult);
     }
 
-    // Global difficulty knob (1.0 = no change)
-    e->hp     = e->hp_max     = (int)(e->hp_max     * DIFFICULTY_ENEMY_HP_MULT);
-    e->damage = e->base_damage = (int)(e->base_damage * DIFFICULTY_ENEMY_DMG_MULT);
-    e->base_speed = e->speed  = e->speed * DIFFICULTY_ENEMY_SPEED_MULT;
+    // Global difficulty knobs: DIFFICULTY_* (game_config.h, dev-tunable
+    // baseline, 1.0 = no change) combined with the player-chosen campaign
+    // difficulty scale (campaign.h, 1.0 on custom maps/Normal).
+    e->hp     = e->hp_max     = (int)(e->hp_max     * DIFFICULTY_ENEMY_HP_MULT * game_difficulty_enemy_hp_mult());
+    e->damage = e->base_damage = (int)(e->base_damage * DIFFICULTY_ENEMY_DMG_MULT * game_difficulty_enemy_dmg_mult());
+    e->base_speed = e->speed  = e->speed * DIFFICULTY_ENEMY_SPEED_MULT * game_difficulty_enemy_speed_mult();
     e->gold_reward             = (int)(e->gold_reward * DIFFICULTY_ENEMY_GOLD_MULT);
 
     e->sprite = resources_get_unit_sprite(f, t);

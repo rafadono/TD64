@@ -4,7 +4,8 @@
 #define TERRAIN_GRID_SIZE 16
 typedef enum {
     TERRAIN_GRASS=0, TERRAIN_WATER=1, TERRAIN_MOUNTAIN=2,
-    TERRAIN_DESERT=3, TERRAIN_SNOW=4, TERRAIN_TYPE_COUNT
+    TERRAIN_DESERT=3, TERRAIN_SNOW=4, TERRAIN_LAVA=5, TERRAIN_PATH=6,
+    TERRAIN_TYPE_COUNT
 } TerrainType;
 typedef struct {
     float tower_damage_mult, tower_range_mult, tower_speed_mult, enemy_speed_mult;

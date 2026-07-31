@@ -44,6 +44,7 @@ typedef struct GameState GameState;
 // =============================================================================
 typedef enum {
     STATE_MAIN_MENU,
+    STATE_DIFFICULTY_SELECT,
     STATE_FACTION_SELECT,
     STATE_PLAYING,
     STATE_PAUSED,

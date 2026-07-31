@@ -26,10 +26,10 @@ static void fill_frozen(TerrainMap* m) {
 }
 static void fill_volcanic(TerrainMap* m) {
     terrain_init(m, TERRAIN_MOUNTAIN);
-    // Lava rivers as water (slowing)
-    for (int x=5;x<15;x++) terrain_set(m,x,4,TERRAIN_WATER);
-    for (int x=8;x<18;x++) terrain_set(m,x,10,TERRAIN_WATER);
-    for (int x=3;x<12;x++) terrain_set(m,x,13,TERRAIN_WATER);
+    // Real lava rivers (TERRAIN_LAVA), heavily slowing enemies that cross them
+    for (int x=5;x<15;x++) terrain_set(m,x,4,TERRAIN_LAVA);
+    for (int x=8;x<18;x++) terrain_set(m,x,10,TERRAIN_LAVA);
+    for (int x=3;x<12;x++) terrain_set(m,x,13,TERRAIN_LAVA);
 }
 
 void map_load(MapData* map, int id) {
@@ -86,24 +86,35 @@ void map_load(MapData* map, int id) {
 }
 
 void map_load_custom(MapData* map, const CustomMapSave* saved) {
-    strcpy(map->name, "Custom Map");
+    strcpy(map->name, saved->name[0] ? saved->name : "Custom Map");
     map->difficulty     = saved->difficulty > 0 ? saved->difficulty : 1;
     map->starting_gold  = saved->starting_gold;
     map->starting_lives = saved->starting_lives;
 
-    switch (saved->path_type) {
-        case 1:  path_init_zigzag(&map->runner_path);   break;
-        case 2:  path_init_spiral(&map->runner_path);   break;
-        case 3:  path_init_straight(&map->runner_path); break;
-        default: path_init_curve(&map->runner_path);    break;
-    }
-
+    // Terrain must be populated BEFORE deriving the path: path_type 4
+    // (free-form) traces the painted TERRAIN_PATH cells, so it needs the
+    // grid data to already be in place.
     for (int y = 0; y < SAVE_GRID_H; y++) {
         for (int x = 0; x < SAVE_GRID_W; x++) {
             terrain_set(&map->terrain, x, y, (TerrainType)saved->grid[y * SAVE_GRID_W + x]);
         }
     }
     terrain_compose(&map->terrain);
+
+    switch (saved->path_type) {
+        case 1:  path_init_zigzag(&map->runner_path);   break;
+        case 2:  path_init_spiral(&map->runner_path);   break;
+        case 3:  path_init_straight(&map->runner_path); break;
+        case 4:
+            // Free-form path painted in the editor. Falls back to the curve
+            // preset if the painted corridor isn't valid (too short, or
+            // doesn't reach a second grid edge) so the map stays playable.
+            if (!path_init_from_terrain(&map->runner_path, &map->terrain)) {
+                path_init_curve(&map->runner_path);
+            }
+            break;
+        default: path_init_curve(&map->runner_path);    break;
+    }
 
     // No dedicated BGM for custom maps yet — whatever was already playing keeps going.
 }

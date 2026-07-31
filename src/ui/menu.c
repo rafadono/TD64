@@ -30,6 +30,7 @@ static int   fs_sel    = 0;   // highlighted faction in faction select
 static int   pause_sel = 0;
 static int   end_sel   = 0;
 static int   main_sel  = 0;
+static int   diff_sel  = GAME_DIFF_NORMAL; // highlighted option in difficulty select
 static float pulse     = 0.0f; // 0..1 loop for animations
 
 #define MAIN_MENU_OPTION_COUNT 4 // Play Campaign / Custom Maps / Language / Credits
@@ -310,6 +311,51 @@ static void render_main_menu(void) {
 }
 
 // =============================================================================
+// DIFFICULTY SELECT — shown after "PLAY CAMPAIGN", before faction select.
+// Not used by custom maps, which have their own per-map difficulty label.
+// =============================================================================
+
+static void render_difficulty_select(void) {
+    fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, RGBA32(10, 10, 22, 255));
+
+    panel(20, 20, SCREEN_WIDTH-40, 32, RGBA32(30,30,70,255), RGBA32(80,80,160,255));
+    rdpq_text_printf(NULL, 1, 35, 40, "%s", T(STR_DIFF_SELECT_TITLE));
+
+    static const StringId DIFF_STR[GAME_DIFF_COUNT] = {
+        STR_DIFF_EASY, STR_DIFF_NORMAL, STR_DIFF_HARD, STR_DIFF_EXTREME
+    };
+    static const color_t DIFF_COL[GAME_DIFF_COUNT] = {
+        RGBA32(90,170,90,220), RGBA32(90,130,210,220),
+        RGBA32(210,140,60,220), RGBA32(200,60,60,220)
+    };
+
+    for (int i = 0; i < GAME_DIFF_COUNT; i++) {
+        bool sel      = (i == diff_sel);
+        bool unlocked = game_difficulty_unlocked((GameDifficulty)i);
+        int  oy       = 66 + i*30;
+
+        color_t bg = !unlocked ? RGBA32(20,20,35,220)
+                   : sel        ? DIFF_COL[i]
+                                : RGBA32(22,22,55,220);
+        panel(40, oy, SCREEN_WIDTH-80, 24, bg,
+              sel ? RGBA32(255,255,180,255) : RGBA32(55,55,100,200));
+        fill(40, oy, 5, 24, unlocked ? DIFF_COL[i] : RGBA32(70,70,80,255));
+
+        rdpq_text_printf(NULL, 1, 55, oy+16, "%s", T(DIFF_STR[i]));
+        if (!unlocked) rdpq_text_printf(NULL, 1, SCREEN_WIDTH-95, oy+16, "%s", T(STR_DIFF_LOCKED_BADGE));
+        if (sel) fill(SCREEN_WIDTH-65, oy+9, 16, 6, RGBA32(255,255,100,255));
+    }
+
+    fill(0, SCREEN_HEIGHT-24, SCREEN_WIDTH, 24, RGBA32(18,18,45,230));
+    fill(0, SCREEN_HEIGHT-24, SCREEN_WIDTH, 1,  RGBA32(60,60,110,255));
+    if (!game_difficulty_unlocked((GameDifficulty)diff_sel)) {
+        rdpq_text_printf(NULL, 1, 10, SCREEN_HEIGHT-12, "%s", T(STR_DIFF_LOCKED_HINT));
+    } else {
+        rdpq_text_printf(NULL, 1, 10, SCREEN_HEIGHT-12, "%s", T(STR_HINT_MAIN_MENU));
+    }
+}
+
+// =============================================================================
 // PAUSE MENU
 // =============================================================================
 
@@ -414,7 +460,8 @@ void menu_render(const GameState* game) {
     pulse = pulse_time < 0.5f ? pulse_time * 2.0f : (1.0f - pulse_time) * 2.0f;
 
     switch (game->flow) {
-        case STATE_MAIN_MENU:      render_main_menu();               break;
+        case STATE_MAIN_MENU:        render_main_menu();               break;
+        case STATE_DIFFICULTY_SELECT: render_difficulty_select();      break;
         case STATE_FACTION_SELECT: render_faction_select();          break;
         case STATE_PAUSED:         render_paused(game);              break;
         case STATE_GAME_OVER:      render_end_screen(false, game);   break;
@@ -440,9 +487,9 @@ int menu_handle_input(GameState* game) {
 
             if (keys.a || keys.start) {
                 if (main_sel == 0) {
-                    // -> Go to faction select
-                    game->flow = STATE_FACTION_SELECT;
-                    fs_sel = 0;
+                    // -> Choose a difficulty first, then faction select
+                    game->flow = STATE_DIFFICULTY_SELECT;
+                    diff_sel   = (int)game_difficulty_get();
                 } else if (main_sel == 1) {
                     // -> Custom maps (editor + Controller Pak)
                     custom_map_menu_enter();
@@ -454,6 +501,23 @@ int menu_handle_input(GameState* game) {
                 // main_sel == 3: credits (future)
             }
             return main_sel;
+        }
+
+        // ── DIFFICULTY SELECT ────────────────────────────────────────────────
+        case STATE_DIFFICULTY_SELECT: {
+            if (keys.d_up)   { diff_sel--; if (diff_sel < 0) diff_sel = GAME_DIFF_COUNT-1; }
+            if (keys.d_down) { diff_sel++; if (diff_sel > GAME_DIFF_COUNT-1) diff_sel = 0; }
+
+            if ((keys.a || keys.start) && game_difficulty_unlocked((GameDifficulty)diff_sel)) {
+                game_difficulty_set((GameDifficulty)diff_sel);
+                game->flow = STATE_FACTION_SELECT;
+                fs_sel = 0;
+            }
+
+            if (keys.b) {
+                game->flow = STATE_MAIN_MENU;
+            }
+            return diff_sel;
         }
 
         // ── FACTION SELECT ───────────────────────────────────────────────────

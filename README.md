@@ -14,6 +14,7 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - [Controls](#controls)
 - [Custom Maps and Map Editor](#custom-maps-and-map-editor)
 - [Controller Pak Saving](#controller-pak-saving)
+- [Campaign Difficulty](#campaign-difficulty)
 - [Animated Sprites and Textured Terrain](#animated-sprites-and-textured-terrain)
 - [Language](#language)
 - [Debug System](#debug-system)
@@ -64,10 +65,14 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - Progressive wave system with random events (double gold, mini-boss,
   speed/HP boost) and staggered spawning (units appear one at a time, not
   all at once — no hitches on large waves)
-- Tactical terrain (buffs/debuffs by type), rendered with real textures
-  (not flat colors) composed once per map
-- In-game map editor + Controller Pak persistence for custom maps and
-  run progress (see dedicated sections below)
+- Tactical terrain (7 types with buffs/debuffs, including hazardous lava and
+  buildable-blocking path tiles), rendered with real textures (not flat
+  colors) composed once per map
+- In-game map editor with free-form paintable paths, map naming, and
+  Controller Pak persistence (any of the 4 ports) for custom maps and run
+  progress (see dedicated sections below)
+- A selectable Easy/Normal/Hard/Extreme difficulty for the 4 fixed
+  campaigns, with Hard/Extreme unlocked by prior campaign progress
 - Animated sprites (8 frames: idle + walk + attack) generated 100%
   procedurally, no external art
 - Leveling (towers gain XP from kills, up to level 10)
@@ -113,12 +118,16 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 |-------|--------|
 | D-pad | Move the cursor over the grid (20x15 cells) |
 | A | Paint the cell with the selected terrain |
-| L / R | Cycle terrain type (grass/water/mountain/desert/snow) |
-| Z | Cycle which setting C-up/C-down adjusts (path / enemy faction / difficulty / gold / lives) |
+| L / R | Cycle terrain type (grass/water/mountain/desert/snow/lava/path) |
+| Z | Cycle which setting C-up/C-down adjusts (path shape / enemy faction / difficulty / gold / lives) |
 | C-up / C-down | Adjust the setting currently selected by Z |
+| C-left | Open the on-screen keyboard to name the map |
+| Hold L+R + B | Clear the whole grid back to grass |
 | Start | Save to the Controller Pak and return to the map menu |
 | C-right | Play the in-memory map without saving (goes to faction select) |
 | B | Exit without saving |
+
+**Naming keyboard**: D-pad selects a character, A types it, Z backspaces, B confirms and returns to the editor.
 
 ---
 
@@ -128,13 +137,23 @@ From the main menu, "CUSTOM MAPS" opens a list of 8 slots (A-H) stored on the
 Controller Pak. Each slot can be edited, played, or deleted.
 
 The editor lets you configure a complete standalone map:
-- Paint any of the 5 terrain types across the full 20x15 grid.
-- Pick one of the 4 already-implemented path types (curve/zigzag/spiral/straight —
-  the editor doesn't support drawing free-form waypoints; that's a known
-  limitation of this version).
+- Paint any of the 7 terrain types across the full 20x15 grid, including
+  `LAVA` (a hazard: enemies wade through it very slowly) and `PATH` (the
+  road tiles the enemy actually walks on — see free-form paths below).
+- Pick a path shape: one of the 4 fixed algorithms (curve/zigzag/spiral/
+  straight), or **CUSTOM** — paint `PATH` tiles yourself and the game traces
+  that painted corridor into real waypoints at load time
+  (`path_init_from_terrain()`, `src/world/pathfinding.c`). Towers can't be
+  placed on `PATH` tiles, same as you couldn't build in the middle of a road.
+  The trace only follows a single, non-branching corridor from one grid edge
+  to another; if what's painted isn't traceable, the map falls back to the
+  curve preset instead of failing to load.
 - Choose the attacking faction (the enemy side).
-- Set a difficulty label (1-5, informational).
+- Set a difficulty label (1-5, informational — distinct from the campaign
+  difficulty selector below, which custom maps don't use).
 - Adjust starting gold (100-500) and starting lives (5-40).
+- Give the map a name (up to 11 characters) via the on-screen keyboard —
+  shown in the Custom Maps list once saved.
 - Play the map immediately without saving (useful for testing, or if there's
   no Controller Pak).
 
@@ -144,7 +163,8 @@ lives are lost.
 
 ## Controller Pak Saving
 
-TD64 uses player 1's Controller Pak (memory pak) to persist:
+TD64 persists to the Controller Pak (memory pak) it finds first across any
+of the 4 controller ports, not just port 1:
 - Up to 8 custom maps (one per slot).
 - The best score for each of the 4 campaigns (updated automatically on
   completing a campaign).
@@ -160,6 +180,28 @@ the console, not just TD64):
 - With no Controller Pak inserted, the editor and "custom map" mode are
   still playable for that session (via "play without saving") — they just
   don't persist between runs.
+
+## Campaign Difficulty
+
+Picking "PLAY CAMPAIGN" from the main menu opens a difficulty select screen
+before faction select: **Easy / Normal / Hard / Extreme**. This is a single
+overall scale layered on top of the developer-tunable `DIFFICULTY_*`
+constants in `game_config.h` (which stay at their 1.0 "Normal" baseline) —
+higher difficulties make enemies tougher and faster and towers more
+expensive, while giving less starting gold and lives. It intentionally
+doesn't touch tower damage/range/cooldown directly, since nerfing the
+player's own towers on "Hard" would feel bad rather than challenging.
+
+- **Hard** unlocks after completing at least 1 campaign; **Extreme** unlocks
+  after completing all 4. Progress is read from the same
+  `GameProgress.campaigns_completed` bitmask the Controller Pak already
+  tracks for best scores. If no Controller Pak/progress is available, every
+  difficulty stays unlocked rather than permanently locking out players
+  without one.
+- Custom maps don't use this selector — they keep their own per-map
+  difficulty label set in the editor, and starting a custom map always
+  resets the campaign difficulty scale back to Normal so the two systems
+  never interact.
 
 ## Animated Sprites and Textured Terrain
 
@@ -542,6 +584,11 @@ the ability name inside `entities_update()`.
 ---
 
 ## Balancing
+
+Players don't need to touch any of this — see [Campaign Difficulty](#campaign-difficulty)
+for the in-game Easy/Normal/Hard/Extreme selector. The `DIFFICULTY_*`
+constants below are the developer-tunable baseline that selector scales on
+top of.
 
 ### To make the game EASIER:
 

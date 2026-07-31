@@ -13,6 +13,14 @@ static const TerrainModifier MODIFIERS[TERRAIN_TYPE_COUNT] = {
     [TERRAIN_DESERT]   = {0.90f, 0.80f, 1.10f, 1.30f, RGBA32(200, 175, 95,  255)},
     // SNOW — everything slowed
     [TERRAIN_SNOW]     = {1.0f, 1.0f, 0.65f, 0.50f, RGBA32(220, 220, 250, 255)},
+    // LAVA — hazardous ground: enemies wade through it very slowly, towers
+    // get a small damage boost from the heat but lose some range to haze
+    [TERRAIN_LAVA]     = {1.15f, 0.90f, 1.0f, 0.35f, RGBA32(230, 90,  20,  255)},
+    // PATH — the road tiles a custom map's free-form path is painted on
+    // (see path_init_from_terrain in pathfinding.c); a mild speed boost for
+    // enemies since it's paved. Towers cannot be placed on PATH cells at all
+    // (see main.c), so its tower_* multipliers are never actually used.
+    [TERRAIN_PATH]     = {1.0f, 1.0f, 1.0f, 1.10f, RGBA32(150, 130, 100, 255)},
 };
 
 // Offscreen surface holding the map already composed from the real terrain

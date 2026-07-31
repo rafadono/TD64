@@ -31,6 +31,8 @@ static const char* TERRAIN_TILE_NAMES[TERRAIN_TYPE_COUNT] = {
     "tile_mountain",
     "tile_desert",
     "tile_snow",
+    "tile_lava",
+    "tile_path",
 };
 
 void resources_init(void) {

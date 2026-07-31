@@ -2,7 +2,11 @@
 #include <libdragon.h>
 #include <string.h>
 
-#define SAVE_PORT JOYPAD_PORT_1
+// Which port currently holds the Controller Pak we're using, set by
+// save_system_check() (see below) - not hardcoded to port 1, since the
+// player might have it plugged into any of the 4 ports. -1 = not detected
+// yet / no pak found.
+static int save_port = -1;
 
 // Arbitrary vendor/game IDs (TD64 is homebrew, it has no officially
 // registered ID) — only used to fill in the entry fields, they don't affect
@@ -28,11 +32,29 @@ static uint8_t note_buf[NOTE_BUF_SIZE];
 static SaveStatus cached_status = SAVE_STATUS_UNKNOWN;
 
 SaveStatus save_system_check(void) {
-    if (joypad_get_accessory_type(SAVE_PORT) != JOYPAD_ACCESSORY_TYPE_CONTROLLER_PAK) {
-        cached_status = SAVE_STATUS_NO_PAK;
+    // Scan every port: the first one with a formatted, valid pak wins
+    // outright. If none is ready, fall back to the first unformatted pak we
+    // saw (so the "hold L+R+A to format" flow has a port to act on). Only
+    // if no port has a Controller Pak at all do we report SAVE_STATUS_NO_PAK.
+    int first_unformatted = -1;
+    for (int p = 0; p < JOYPAD_PORT_COUNT; p++) {
+        if (joypad_get_accessory_type((joypad_port_t)p) != JOYPAD_ACCESSORY_TYPE_CONTROLLER_PAK) continue;
+        if (validate_mempak(p) == 0) {
+            save_port = p;
+            cached_status = SAVE_STATUS_READY;
+            return cached_status;
+        }
+        if (first_unformatted < 0) first_unformatted = p;
+    }
+
+    if (first_unformatted >= 0) {
+        save_port = first_unformatted;
+        cached_status = SAVE_STATUS_UNFORMATTED;
         return cached_status;
     }
-    cached_status = (validate_mempak(SAVE_PORT) == 0) ? SAVE_STATUS_READY : SAVE_STATUS_UNFORMATTED;
+
+    save_port = -1;
+    cached_status = SAVE_STATUS_NO_PAK;
     return cached_status;
 }
 
@@ -41,7 +63,8 @@ SaveStatus save_system_status(void) {
 }
 
 bool save_format_pak_confirmed(void) {
-    if (format_mempak(SAVE_PORT) != 0) return false;
+    if (save_port < 0) return false;
+    if (format_mempak(save_port) != 0) return false;
     cached_status = SAVE_STATUS_READY;
     return true;
 }
@@ -54,7 +77,7 @@ static int find_entry(const char* name, entry_structure_t* out) {
     size_t len = strlen(name);
     for (int i = 0; i < 16; i++) {
         entry_structure_t e;
-        if (get_mempak_entry(SAVE_PORT, i, &e) != 0) continue;
+        if (get_mempak_entry(save_port, i, &e) != 0) continue;
         if (!e.valid) continue;
         if (strncmp(e.name, name, len) == 0) {
             if (out) *out = e;
@@ -74,10 +97,10 @@ static bool write_note(const char* name, const void* data, int size) {
     // already exists (previous save), it must be deleted first.
     entry_structure_t existing;
     if (find_entry(name, &existing) >= 0) {
-        if (delete_mempak_entry(SAVE_PORT, &existing) != 0) return false;
+        if (delete_mempak_entry(save_port, &existing) != 0) return false;
     }
 
-    if (get_mempak_free_space(SAVE_PORT) < blocks) return false;
+    if (get_mempak_free_space(save_port) < blocks) return false;
 
     memset(note_buf, 0, sizeof(note_buf));
     memcpy(note_buf, data, size);
@@ -90,7 +113,7 @@ static bool write_note(const char* name, const void* data, int size) {
     entry.blocks  = (uint8_t)blocks;
     strncpy(entry.name, name, sizeof(entry.name) - 1);
 
-    return write_mempak_entry_data(SAVE_PORT, &entry, note_buf) == 0;
+    return write_mempak_entry_data(save_port, &entry, note_buf) == 0;
 }
 
 static bool read_note(const char* name, void* out, int size) {
@@ -100,7 +123,7 @@ static bool read_note(const char* name, void* out, int size) {
     if (find_entry(name, &entry) < 0) return false;
     if ((int)entry.blocks * MEMPAK_BLOCK_SIZE > NOTE_BUF_SIZE) return false;
 
-    if (read_mempak_entry_data(SAVE_PORT, &entry, note_buf) != 0) return false;
+    if (read_mempak_entry_data(save_port, &entry, note_buf) != 0) return false;
     memcpy(out, note_buf, size);
     return true;
 }
@@ -133,7 +156,7 @@ bool save_delete_custom_map(int slot) {
     entry_structure_t e;
     int idx = find_entry(MAP_SLOT_NAMES[slot], &e);
     if (idx < 0) return true; // already empty
-    return delete_mempak_entry(SAVE_PORT, &e) == 0;
+    return delete_mempak_entry(save_port, &e) == 0;
 }
 
 bool save_read_progress(GameProgress* out) {

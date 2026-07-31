@@ -18,6 +18,11 @@
 // there are spare buttons, Z cycles which setting C-up/C-down currently
 // adjusts (see EditorTab below) instead of giving every setting its own
 // button.
+//
+// The path can also be free-form: painting TERRAIN_PATH tiles (cycle the
+// brush to it with L/R) and setting the PATH tab to CUSTOM makes
+// path_init_from_terrain() (pathfinding.c) trace that painted corridor into
+// real waypoints at load time, instead of using one of the 4 fixed shapes.
 // =============================================================================
 
 typedef enum {
@@ -29,21 +34,36 @@ typedef enum {
     TAB_COUNT
 } EditorTab;
 
+#define PATH_TYPE_COUNT 5 // curve, zigzag, spiral, straight, custom/painted
+
 static TerrainMap editing_terrain;
-static int        editing_path_type;   // 0=curve 1=zigzag 2=spiral 3=straight
+static int        editing_path_type;   // 0=curve 1=zigzag 2=spiral 3=straight 4=custom
 static int        editing_enemy;       // FactionId attacking
 static int        editing_difficulty;  // 1-5, informational label
 static int        editing_gold;
 static int        editing_lives;
+static char       editing_name[SAVE_NAME_LEN];
 static int        target_slot;         // -1 = new map, no slot assigned yet
 static int        cursor_gx, cursor_gy;
 static int        brush_type;          // current TerrainType
 static EditorTab  current_tab;
 
+// On-screen keyboard for naming the map (C-left to open, see
+// handle_naming_input). " " renders as "_" for visibility but still types
+// a real space; A-Z/0-9 type themselves. Laid out in a fixed-width grid.
+static bool naming_mode;
+static int  kb_cursor;
+static const char KEYBOARD_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+#define KEYBOARD_LEN (sizeof(KEYBOARD_CHARS) - 1)
+#define KEYBOARD_COLS 8
+
 static const StringId TERRAIN_STR[TERRAIN_TYPE_COUNT] = {
-    STR_TERRAIN_GRASS, STR_TERRAIN_WATER, STR_TERRAIN_MOUNTAIN, STR_TERRAIN_DESERT, STR_TERRAIN_SNOW
+    STR_TERRAIN_GRASS, STR_TERRAIN_WATER, STR_TERRAIN_MOUNTAIN,
+    STR_TERRAIN_DESERT, STR_TERRAIN_SNOW, STR_TERRAIN_LAVA, STR_TERRAIN_PATH
 };
-static const StringId PATH_STR[4] = { STR_PATH_CURVE, STR_PATH_ZIGZAG, STR_PATH_SPIRAL, STR_PATH_STRAIGHT };
+static const StringId PATH_STR[PATH_TYPE_COUNT] = {
+    STR_PATH_CURVE, STR_PATH_ZIGZAG, STR_PATH_SPIRAL, STR_PATH_STRAIGHT, STR_PATH_CUSTOM
+};
 
 static void me_fill(int x, int y, int w, int h, color_t c) {
     rdpq_mode_combiner(RDPQ_COMBINER_FLAT);
@@ -57,6 +77,8 @@ void map_editor_enter(int slot) {
     cursor_gy = SAVE_GRID_H / 2;
     brush_type = TERRAIN_GRASS;
     current_tab = TAB_PATH;
+    naming_mode = false;
+    kb_cursor = 0;
 
     CustomMapSave loaded;
     if (slot >= 0 && save_read_custom_map(slot, &loaded) && loaded.used) {
@@ -65,6 +87,7 @@ void map_editor_enter(int slot) {
         editing_difficulty  = loaded.difficulty > 0 ? loaded.difficulty : 1;
         editing_gold        = loaded.starting_gold;
         editing_lives       = loaded.starting_lives;
+        snprintf(editing_name, sizeof(editing_name), "%s", loaded.name);
         for (int y = 0; y < SAVE_GRID_H; y++)
             for (int x = 0; x < SAVE_GRID_W; x++)
                 terrain_set(&editing_terrain, x, y, (TerrainType)loaded.grid[y*SAVE_GRID_W+x]);
@@ -74,6 +97,7 @@ void map_editor_enter(int slot) {
         editing_difficulty  = 1;
         editing_gold        = 200;
         editing_lives       = 20;
+        editing_name[0]     = '\0';
         terrain_init(&editing_terrain, TERRAIN_GRASS);
     }
     terrain_compose(&editing_terrain);
@@ -92,6 +116,7 @@ static void editing_to_save(CustomMapSave* out) {
     out->difficulty     = (uint8_t)editing_difficulty;
     out->starting_gold  = (uint16_t)editing_gold;
     out->starting_lives = (uint8_t)editing_lives;
+    snprintf(out->name, sizeof(out->name), "%s", editing_name);
     out->used = 1;
 }
 
@@ -100,7 +125,7 @@ static void editing_to_save(CustomMapSave* out) {
 static void adjust_current_tab(int dir) {
     switch (current_tab) {
         case TAB_PATH:
-            editing_path_type = (editing_path_type + dir + 4) % 4;
+            editing_path_type = (editing_path_type + dir + PATH_TYPE_COUNT) % PATH_TYPE_COUNT;
             break;
         case TAB_ENEMY:
             editing_enemy = (editing_enemy + dir + FACTION_COUNT) % FACTION_COUNT;
@@ -124,8 +149,44 @@ static void adjust_current_tab(int dir) {
     }
 }
 
+// While naming_mode is active, every button means something different (see
+// the on-screen keyboard in map_editor_render), so it's handled in a fully
+// separate branch instead of interleaving checks with the terrain editor.
+static void handle_naming_input(joypad_buttons_t kd) {
+    if (kd.d_left)  { kb_cursor--; if (kb_cursor < 0) kb_cursor = KEYBOARD_LEN - 1; }
+    if (kd.d_right) { kb_cursor++; if (kb_cursor >= (int)KEYBOARD_LEN) kb_cursor = 0; }
+    if (kd.d_up)    { kb_cursor -= KEYBOARD_COLS; if (kb_cursor < 0) kb_cursor += KEYBOARD_LEN; }
+    if (kd.d_down)  { kb_cursor += KEYBOARD_COLS; if (kb_cursor >= (int)KEYBOARD_LEN) kb_cursor -= KEYBOARD_LEN; }
+
+    if (kd.a) {
+        size_t len = strlen(editing_name);
+        if (len < sizeof(editing_name) - 1) {
+            editing_name[len]     = KEYBOARD_CHARS[kb_cursor];
+            editing_name[len + 1] = '\0';
+        }
+    }
+    if (kd.z) {
+        size_t len = strlen(editing_name);
+        if (len > 0) editing_name[len - 1] = '\0';
+    }
+    if (kd.b) naming_mode = false;
+}
+
 void map_editor_handle_input(GameState* game) {
     joypad_buttons_t kd = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+
+    if (naming_mode) { handle_naming_input(kd); return; }
+
+    // Hold L+R and tap B to reset the whole grid to grass - a quick way to
+    // start over without repainting every cell by hand. Must be checked
+    // before the plain "B exits the editor" handler below so a single B tap
+    // doesn't also exit the editor on the same frame this combo fires.
+    joypad_buttons_t held = joypad_get_buttons_held(JOYPAD_PORT_1);
+    if (held.l && held.r && kd.b) {
+        terrain_init(&editing_terrain, TERRAIN_GRASS);
+        terrain_compose(&editing_terrain);
+        return;
+    }
 
     if (kd.d_up)    { cursor_gy--; if (cursor_gy < 0) cursor_gy = 0; }
     if (kd.d_down)  { cursor_gy++; if (cursor_gy > SAVE_GRID_H-1) cursor_gy = SAVE_GRID_H-1; }
@@ -143,6 +204,8 @@ void map_editor_handle_input(GameState* game) {
         terrain_set(&editing_terrain, cursor_gx, cursor_gy, (TerrainType)brush_type);
         terrain_compose(&editing_terrain);
     }
+
+    if (kd.c_left) { naming_mode = true; kb_cursor = 0; }
 
     if (kd.start) {
         CustomMapSave data;
@@ -168,8 +231,40 @@ void map_editor_handle_input(GameState* game) {
     }
 }
 
+static void render_naming(void) {
+    me_fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, RGBA32(10, 10, 25, 240));
+
+    // Header: current name buffer with a trailing cursor
+    me_fill(20, 10, SCREEN_WIDTH-40, 24, RGBA32(30, 30, 70, 255));
+    char name_buf[SAVE_NAME_LEN + 2];
+    snprintf(name_buf, sizeof(name_buf), "%s_", editing_name);
+    rdpq_text_printf(NULL, 1, 30, 27, T(STR_EDITOR_NAME_LABEL), name_buf);
+
+    // On-screen keyboard grid
+    int cell_w = SCREEN_WIDTH / KEYBOARD_COLS;
+    int cell_h = 24;
+    int grid_y = 50;
+    for (int i = 0; i < (int)KEYBOARD_LEN; i++) {
+        int col = i % KEYBOARD_COLS;
+        int row = i / KEYBOARD_COLS;
+        int cx = col * cell_w;
+        int cy = grid_y + row * cell_h;
+        bool sel = (i == kb_cursor);
+        me_fill(cx+1, cy+1, cell_w-2, cell_h-2,
+                sel ? RGBA32(90, 140, 220, 255) : RGBA32(25, 25, 55, 220));
+        char c = KEYBOARD_CHARS[i];
+        char label[2] = { (c == ' ') ? '_' : c, '\0' };
+        rdpq_text_printf(NULL, 1, cx + cell_w/2 - 3, cy + cell_h/2 + 4, "%s", label);
+    }
+
+    me_fill(0, SCREEN_HEIGHT-16, SCREEN_WIDTH, 16, RGBA32(10, 10, 25, 240));
+    rdpq_text_printf(NULL, 1, 10, SCREEN_HEIGHT-4, "%s", T(STR_EDITOR_NAMING_HINT));
+}
+
 void map_editor_render(const GameState* game) {
     (void)game;
+
+    if (naming_mode) { render_naming(); return; }
 
     terrain_render(&editing_terrain);
 
@@ -192,11 +287,14 @@ void map_editor_render(const GameState* game) {
     }
     rdpq_text_printf(NULL, 1, 130, 11, "%s", tab_buf);
 
+    char slot_buf[24];
+    const char* display_name = editing_name[0] ? editing_name : T(STR_EDITOR_NEW);
     if (target_slot >= 0) {
-        rdpq_text_printf(NULL, 1, 250, 11, T(STR_EDITOR_SLOT_LABEL), 'A' + target_slot);
+        snprintf(slot_buf, sizeof(slot_buf), "%c:%s", 'A' + target_slot, display_name);
     } else {
-        rdpq_text_printf(NULL, 1, 250, 11, "%s", T(STR_EDITOR_NEW));
+        snprintf(slot_buf, sizeof(slot_buf), "*:%s", display_name);
     }
+    rdpq_text_printf(NULL, 1, 195, 11, "%s", slot_buf);
 
     // Bottom bar: pak status + controls
     me_fill(0, SCREEN_HEIGHT-24, SCREEN_WIDTH, 24, RGBA32(10, 10, 25, 220));

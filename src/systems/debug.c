@@ -6,6 +6,12 @@
 
 DebugState debug;
 
+// Accumulated since the last debug_update_perf() roll-up (once/sec, see
+// main.c). Kept file-static rather than in DebugState since they're pure
+// intermediate state, not anything the overlay or menu ever reads directly.
+static int accum_gold_earned   = 0;
+static int accum_damage_dealt  = 0;
+
 void sys_debug_init(void) {
     // Load defaults from game_config.h
     debug.show_fps             = DEBUG_SHOW_FPS_DEFAULT;
@@ -105,11 +111,27 @@ void debug_handle_input(void) {
 }
 
 void debug_update_perf(float dt, int entities, int particles) {
+    (void)dt; // kept in the signature for API symmetry; not currently needed here
     debug.entity_count = entities;
     debug.particle_count = particles;
-    
+
     // FPS is calculated externally in main loop
     // update_time_ms and render_time_ms set externally with timer
+
+    // Called once/sec (see main.c), so the accumulated-since-last-call
+    // totals ARE the per-second rate directly — no division needed.
+    debug.gold_per_second = accum_gold_earned;
+    debug.dps_total       = accum_damage_dealt;
+    accum_gold_earned  = 0;
+    accum_damage_dealt = 0;
+}
+
+void debug_track_gold_earned(int amount) {
+    accum_gold_earned += amount;
+}
+
+void debug_track_damage_dealt(int amount) {
+    accum_damage_dealt += amount;
 }
 
 // Render debug overlay

@@ -68,6 +68,14 @@ void sys_debug_render(const struct GameState* game);
 // Update performance counters
 void debug_update_perf(float dt, int entities, int particles);
 
+// Accumulate gold earned / damage dealt this second, for the Economy
+// overlay's gold_per_second/dps_total. Call from wherever gold/damage
+// actually happens (game.c wave-clear bonus, entities.c kills/hits) —
+// debug_update_perf() rolls the accumulated totals into a per-second rate
+// once a second (it's only called that often, see main.c) and resets them.
+void debug_track_gold_earned(int amount);
+void debug_track_damage_dealt(int amount);
+
 // Log message to debug console (if available)
 void debug_log(const char* fmt, ...);
 

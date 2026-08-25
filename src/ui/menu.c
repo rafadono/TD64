@@ -2,6 +2,7 @@
 #include "../core/engine.h"
 #include "custom_map_menu.h"
 #include "controls_menu.h"
+#include "stats_menu.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -34,7 +35,7 @@ static int   main_sel  = 0;
 static int   diff_sel  = GAME_DIFF_NORMAL; // highlighted option in difficulty select
 static float pulse     = 0.0f; // 0..1 loop for animations
 
-#define MAIN_MENU_OPTION_COUNT 5 // Play Campaign / Custom Maps / Controls / Language / Credits
+#define MAIN_MENU_OPTION_COUNT 6 // Play Campaign / Custom Maps / Controls / Stats / Language / Credits
 
 // =============================================================================
 // DRAWING PRIMITIVES
@@ -283,15 +284,16 @@ static void render_main_menu(void) {
           RGBA32(80,80,160,255));
     rdpq_text_printf(NULL, 1, 35, 42, "%s", T(STR_TITLE_MAIN));
 
-    // 5 options: Play Campaign / Custom Maps / Controls / Language / Credits
+    // 6 options: Play Campaign / Custom Maps / Controls / Stats / Language / Credits
     const color_t opt_col[MAIN_MENU_OPTION_COUNT] = {
-        RGBA32(60,120,220,255), RGBA32(90,150,90,220),
-        RGBA32(110,110,180,220), RGBA32(150,120,60,220), RGBA32(70,70,80,200)
+        RGBA32(60,120,220,255), RGBA32(90,150,90,220), RGBA32(110,110,180,220),
+        RGBA32(180,140,60,220), RGBA32(150,120,60,220), RGBA32(70,70,80,200)
     };
     char lang_label[32];
     snprintf(lang_label, sizeof(lang_label), "%s: %s", T(STR_MENU_LANGUAGE), lang_name(lang_get()));
     const char* labels[MAIN_MENU_OPTION_COUNT] = {
-        T(STR_MENU_PLAY_CAMPAIGN), T(STR_MENU_CUSTOM_MAPS), T(STR_MENU_CONTROLS), lang_label, T(STR_MENU_CREDITS)
+        T(STR_MENU_PLAY_CAMPAIGN), T(STR_MENU_CUSTOM_MAPS), T(STR_MENU_CONTROLS),
+        T(STR_MENU_STATS), lang_label, T(STR_MENU_CREDITS)
     };
     for (int i = 0; i < MAIN_MENU_OPTION_COUNT; i++) {
         bool sel = (i == main_sel);
@@ -505,10 +507,14 @@ int menu_handle_input(GameState* game) {
                     controls_menu_enter();
                     game->flow = STATE_CONTROLS_MENU;
                 } else if (main_sel == 3) {
+                    // -> Lifetime stats + last run highlights
+                    stats_menu_enter();
+                    game->flow = STATE_STATS_MENU;
+                } else if (main_sel == 4) {
                     // -> Cycle language in place, stay on this menu
                     lang_cycle();
                 }
-                // main_sel == 4: credits (future)
+                // main_sel == 5: credits (future)
             }
             return main_sel;
         }

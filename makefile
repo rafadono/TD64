@@ -48,7 +48,8 @@ UI_SOURCES = \
 	src/ui/ui.c \
 	src/ui/map_editor.c \
 	src/ui/custom_map_menu.c \
-	src/ui/controls_menu.c
+	src/ui/controls_menu.c \
+	src/ui/stats_menu.c
 
 # Resources
 RESOURCE_SOURCES = src/resources/resources.c

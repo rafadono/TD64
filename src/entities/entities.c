@@ -234,6 +234,7 @@ static void entity_deal_damage(Entity* attacker, Entity* target, int damage, Gam
     }
 
     target->hp -= damage;
+    debug_track_damage_dealt(damage);
     particles_emit_hit(target->x, target->y, attacker ? attacker->tint : RGBA32(255, 255, 255, 255));
 
     char txt[16];
@@ -250,7 +251,11 @@ static void entity_deal_damage(Entity* attacker, Entity* target, int damage, Gam
     if (target->hp <= 0) {
         // Death
         game->gold += target->gold_reward;
+        debug_track_gold_earned(target->gold_reward);
         score_on_kill(&game->score, target->gold_reward, target->score_reward);
+        if (target->unit_type == UNIT_HERO) {
+            run_log_add(&game->score.log, RUN_EVENT_HERO_KILLED, game->score.run_elapsed, game->wave);
+        }
         game->enemies_remaining--;
 
         particles_emit_explosion(target->x + target->w/2,
@@ -372,6 +377,21 @@ void entities_update(float dt, GameState* game) {
                     game->game_over = true;
                     game->flow = STATE_GAME_OVER;
                     score_final(&game->score);
+                    run_log_add(&game->score.log, RUN_EVENT_DEFEAT, game->score.run_elapsed, game->wave);
+
+                    // Kills count toward the lifetime total on ANY run's
+                    // end, defeat included, and regardless of campaign vs.
+                    // custom map — unlike best_score/fastest_clear (campaign
+                    // victory only, see campaign.c), a defeated run's kills
+                    // are still real kills.
+                    if (save_system_check() == SAVE_STATUS_READY) {
+                        GameProgress progress;
+                        if (!save_read_progress(&progress)) {
+                            memset(&progress, 0, sizeof(progress));
+                        }
+                        progress.total_kills += (uint32_t)game->score.total_kills;
+                        save_write_progress(&progress);
+                    }
                 }
             }
             continue;

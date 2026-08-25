@@ -3,6 +3,7 @@ COMPLETE PROJECT STRUCTURE
 
 faction_td/
 ├── .gitignore
+├── .gitmodules                 [declares libdragon/ as a real git submodule, pinned to a commit]
 ├── .github/
 │   └── workflows/
 │       └── build.yml           [CI: regenerates assets and builds the ROM on every push/PR]
@@ -47,7 +48,7 @@ faction_td/
 │   │   └── campaign.c
 │   │
 │   ├── systems/
-│   │   ├── score.h
+│   │   ├── score.h              [ScoreSystem + RunLog: a curated run event timeline]
 │   │   ├── score.c
 │   │   ├── leveling.h
 │   │   ├── leveling.c
@@ -57,7 +58,7 @@ faction_td/
 │   │   ├── debug.c
 │   │   ├── audio.h
 │   │   ├── audio.c
-│   │   ├── save.h              [Controller Pak persistence]
+│   │   ├── save.h              [Controller Pak persistence; GameProgress now also tracks total kills + fastest clear time]
 │   │   ├── save.c
 │   │   ├── lang.h              [EN/ES localization]
 │   │   ├── lang.c
@@ -74,7 +75,9 @@ faction_td/
 │   │   ├── custom_map_menu.h   [Controller Pak slot browser]
 │   │   ├── custom_map_menu.c
 │   │   ├── controls_menu.h     [controls remap screen]
-│   │   └── controls_menu.c
+│   │   ├── controls_menu.c
+│   │   ├── stats_menu.h        [lifetime stats + last-run highlights screen]
+│   │   └── stats_menu.c
 │   │
 │   └── resources/
 │       ├── resources.h
@@ -125,19 +128,19 @@ faction_td/
 │   ├── TD64.dfs
 │   └── *.o
 │
-├── libdragon/           [vendored SDK checkout - do not version, ~90MB]
+├── libdragon/           [real git submodule now (.gitmodules), pinned to a commit - not a plain gitignored checkout]
 │
 └── docs/
     └── [empty - reserved for additional documentation]
 
 TOTALS:
 =======
-- Source files (.c):      24
-- Headers (.h):            27
+- Source files (.c):      25
+- Headers (.h):            28
 - Sprites (PNG, active):   40   (28 units/projectiles + 7 terrain tiles + 4 map refs + 1 reference sheet)
 - Sprite previews (PNG):   40
 - Tools (Python):          3
-- Documentation:           4    (README.md, STRUCTURE.md, FILE_LIST.txt, prompts_graficos.md)
-- Config/build:            2    (makefile, .gitignore)
+- Documentation:           5    (README.md, STRUCTURE.md, FILE_LIST.txt, TODO.md, prompts_graficos.md)
+- Config/build:            3    (makefile, .gitignore, .gitmodules)
 - CI:                      1    (.github/workflows/build.yml)
-- TOTAL:                   141 files
+- TOTAL:                   144 files

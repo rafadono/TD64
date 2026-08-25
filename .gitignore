@@ -1,6 +1,3 @@
-# Vendored SDK (~90MB, managed by the `libdragon` CLI / Docker;
-# not a real git submodule yet - see .libdragon/config.json)
-libdragon/
 
 # Build artifacts
 build/

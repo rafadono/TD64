@@ -186,6 +186,7 @@ void campaign_start(GameState* game, int campaign_id) {
     game->paused    = false;
 
     score_init(&game->score);
+    run_log_add(&game->score.log, RUN_EVENT_MAP_STARTED, 0.0f, c->map_ids[0]);
     camera_init(&game->camera);
     entities_clear();
 
@@ -205,6 +206,7 @@ void campaign_advance(GameState* game) {
         // Campaign finished!
         score_on_campaign_complete(&game->score);
         score_final(&game->score);
+        run_log_add(&game->score.log, RUN_EVENT_VICTORY, game->score.run_elapsed, game->campaign_id);
         game->victory = true;
         game->flow    = STATE_VICTORY;
 
@@ -220,6 +222,12 @@ void campaign_advance(GameState* game) {
                 progress.best_score[game->campaign_id] = (uint32_t)game->score.score;
             }
             progress.campaigns_completed |= (1 << game->campaign_id);
+            progress.total_kills += (uint32_t)game->score.total_kills;
+            uint32_t clear_seconds = (uint32_t)game->score.run_elapsed;
+            if (progress.fastest_clear_seconds[game->campaign_id] == 0 ||
+                clear_seconds < progress.fastest_clear_seconds[game->campaign_id]) {
+                progress.fastest_clear_seconds[game->campaign_id] = clear_seconds;
+            }
             save_write_progress(&progress);
         }
         return;
@@ -228,6 +236,7 @@ void campaign_advance(GameState* game) {
     // Next map
     int map_id = c->map_ids[game->current_map_index];
     map_load(&game->map, map_id);
+    run_log_add(&game->score.log, RUN_EVENT_MAP_STARTED, game->score.run_elapsed, map_id);
 
     // Keep gold and score, reset lives
     game->lives = (int)(game->map.starting_lives * DIFFICULTY_STARTING_LIVES_MULT * game_difficulty_starting_lives_mult());

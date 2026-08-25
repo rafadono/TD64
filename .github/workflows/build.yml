@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout TD64
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,12 +31,9 @@ jobs:
           python tools/gen_sprites.py
           python tools/gen_maps.py
 
-      # libdragon/ is gitignored (it's a ~90MB vendor checkout, see
-      # .libdragon/config.json) so CI clones the same upstream source that
-      # `libdragon init` would set up locally.
-      - name: Clone libdragon SDK source
-        run: git clone --depth 1 https://github.com/DragonMinded/libdragon.git libdragon
-
+      # libdragon/ is a real git submodule (see .gitmodules) pinned to a
+      # specific upstream commit, checked out above via `submodules: true` —
+      # reproducible by default, unlike a fresh clone of the default branch.
       - name: Pull libdragon toolchain image
         run: docker pull ghcr.io/dragonminded/libdragon:latest
 

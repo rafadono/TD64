@@ -3,6 +3,7 @@
 #include "../ui/custom_map_menu.h"
 #include "../ui/map_editor.h"
 #include "../ui/controls_menu.h"
+#include "../ui/stats_menu.h"
 
 // =============================================================================
 // GAME STATE (single global)
@@ -292,6 +293,10 @@ int main(void) {
                 controls_menu_handle_input(&game);
                 break;
 
+            case STATE_STATS_MENU:
+                stats_menu_handle_input(&game);
+                break;
+
             default:
                 break;
         }
@@ -325,6 +330,9 @@ int main(void) {
         } else if (game.flow == STATE_CONTROLS_MENU) {
             rdpq_set_mode_standard();
             controls_menu_render(&game);
+        } else if (game.flow == STATE_STATS_MENU) {
+            rdpq_set_mode_standard();
+            stats_menu_render(&game);
         } else {
             // All other menu states (main menu, faction select, game over, victory)
             rdpq_set_mode_standard();

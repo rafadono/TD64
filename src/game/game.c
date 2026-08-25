@@ -74,6 +74,7 @@ void game_start_custom_map(GameState* game, FactionId faction, const CustomMapSa
     game->paused    = false;
 
     score_init(&game->score);
+    run_log_add(&game->score.log, RUN_EVENT_MAP_STARTED, 0.0f, -1); // -1 = custom map, no numeric id
     camera_init(&game->camera);
     entities_clear();
 
@@ -161,6 +162,7 @@ void game_update(GameState* game, float dt) {
         bool perfect = (game->lives == game->lives_wave_start);
         int  bonus   = ECONOMY_WAVE_CLEAR_BASE_GOLD + game->wave * ECONOMY_WAVE_CLEAR_PER_WAVE;
         game->gold  += bonus;
+        debug_track_gold_earned(bonus);
 
         score_on_wave_complete(&game->score, game->wave, perfect);
 

@@ -3,6 +3,21 @@
 #include "../config/game_config.h"
 #include <stdio.h>
 
+void run_log_clear(RunLog* log) {
+    log->count = 0;
+}
+
+void run_log_add(RunLog* log, RunEventType type, float timestamp, int value) {
+    // Silently stop once full — a highlights reel doesn't need every event,
+    // and a realistic full campaign run stays well under the cap anyway
+    // since only perfect/hero-interval waves and a few milestones are logged.
+    if (log->count >= RUN_LOG_MAX_EVENTS) return;
+    log->events[log->count].type      = type;
+    log->events[log->count].timestamp = timestamp;
+    log->events[log->count].value     = value;
+    log->count++;
+}
+
 void score_init(ScoreSystem* s) {
     s->score = 0;
     s->combo_mult = 1;
@@ -14,9 +29,13 @@ void score_init(ScoreSystem* s) {
     s->highest_wave = 0;
     s->wave_start_time = 0.0f;
     s->wave_duration = 0.0f;
+    s->run_elapsed = 0.0f;
+    run_log_clear(&s->log);
 }
 
 void score_update(ScoreSystem* s, float dt) {
+    s->run_elapsed += dt;
+
     // Update combo timer
     if (s->combo_timer > 0) {
         s->combo_timer -= dt;
@@ -91,7 +110,13 @@ void score_on_wave_complete(ScoreSystem* s, int wave, bool perfect) {
     // Update highest wave
     if (wave > s->highest_wave)
         s->highest_wave = wave;
-    
+
+    // Highlights reel: only perfect or hero-interval waves are notable
+    // enough to log (every wave would flood a "highlights" list).
+    if (perfect || wave % WAVE_HERO_INTERVAL == 0) {
+        run_log_add(&s->log, RUN_EVENT_WAVE_CLEARED, s->run_elapsed, wave);
+    }
+
     // Reset wave timer
     s->wave_start_time = 0.0f;
     s->wave_duration = 0.0f;

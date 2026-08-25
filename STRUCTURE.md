@@ -39,7 +39,7 @@ faction_td/
 | File | Purpose |
 |---------|-----------|
 | **screen.h** | `SCREEN_WIDTH/HEIGHT` and `WORLD_WIDTH/HEIGHT` — the single source of truth for the game's resolution and the biggest scrollable map size. Dependency-free so world/terrain.h and systems/save.h can derive from it without a circular include |
-| **engine.h** | Main engine header. Includes every subsystem and defines global types (Entity, GameState, GameFlowState — 10 states, including STATE_MAP_EDITOR, STATE_CUSTOM_MAP_MENU, and STATE_CONTROLS_MENU) |
+| **engine.h** | Main engine header. Includes every subsystem and defines global types (Entity, GameState, GameFlowState — 11 states, including STATE_MAP_EDITOR, STATE_CUSTOM_MAP_MENU, STATE_CONTROLS_MENU, and STATE_STATS_MENU) |
 | **main.c** | Main game loop. Input via `joypad_*` (routed through the remappable-action layer, see systems/controls.h), real delta time, render/update dispatch by state, D-pad cursor movement with camera auto-scroll |
 
 ### `src/config/` - Configuration and Data (4 files)
@@ -86,29 +86,29 @@ faction_td/
 
 | File | Purpose |
 |---------|-----------|
-| **score.h** | ScoreSystem struct, scoring prototypes |
-| **score.c** | Multi-factor score: combo, speed bonus, perfect wave, time penalty — wired to wave/map/campaign complete |
+| **score.h** | ScoreSystem struct (includes `run_elapsed` and a `RunLog`), scoring prototypes, `RunEventType`/`RunEvent`/`RunLog` and `run_log_add()`/`run_log_clear()` |
+| **score.c** | Multi-factor score: combo, speed bonus, perfect wave, time penalty — wired to wave/map/campaign complete; also logs a curated run event timeline (map started, perfect/hero-interval waves, hero kills, victory/defeat) into `ScoreSystem.log` for the Stats screen's "highlights" page |
 | **leveling.h** | UnitLevel struct, XP functions |
 | **leveling.c** | Tower level-up system (gain XP from kills), capped at level 10 |
 | **effects.h** | Camera (persistent world-space scroll + transient shake), particles, floating text |
 | **effects.c** | `camera_ensure_visible()` (auto-scrolls to keep a world point on screen with a margin — drives all camera movement), particle/floating-text implementation with real damage numbers |
-| **debug.h** | DebugState struct with every overlay/cheat flag |
-| **debug.c** | Unified debug menu: one button (C-up) opens a navigable list of all 18 overlays/cheats, replacing the old scattered C-button toggles and hidden L+R+C-* cheat combos |
+| **debug.h** | DebugState struct with every overlay/cheat flag, plus `debug_track_gold_earned()`/`debug_track_damage_dealt()` for the Economy overlay's real-time rates |
+| **debug.c** | Unified debug menu: one button (C-up) opens a navigable list of all 18 overlays/cheats, replacing the old scattered C-button toggles and hidden L+R+C-* cheat combos. `gold_per_second`/`dps_total` are rolled up once/sec from accumulators fed by entities.c (kills, hits) and game.c (wave-clear bonus) — no longer stuck at 0 |
 | **audio.h** | Modular audio system header |
 | **audio.c** | Background music (BGM) and sound effect (SFX) playback/init via wav64 and libdragon's mixer — no audio assets loaded yet |
-| **save.h** | Serialized formats for custom maps (`CustomMapSave`), progress (`GameProgress`), and remapped controls (`InputConfig`); `SaveStatus` enum |
+| **save.h** | Serialized formats for custom maps (`CustomMapSave`), progress (`GameProgress` — best score, campaigns completed, total kills, fastest clear time per campaign), and remapped controls (`InputConfig`); `SaveStatus` enum |
 | **save.c** | Controller Pak layer: scans all 4 controller ports for a pak, reading/writing "notes" (mempak's high-level API, never raw sector access), formatting only under explicit confirmation |
 | **lang.h** | Language/StringId enums and the `T(StringId)` localization accessor |
 | **lang.c** | English/Spanish string table (`STRINGS[STR_COUNT][LANG_COUNT]`), runtime language cycling |
 | **controls.h** | `PhysicalButton`/`GameAction` enums, the 7 remappable in-game actions and their default bindings |
 | **controls.c** | Binding storage, `action_pressed()` (checks whichever physical button is currently bound to an action), load from/save to the Controller Pak |
 
-### `src/ui/` - User Interface (10 files)
+### `src/ui/` - User Interface (12 files)
 
 | File | Purpose |
 |---------|-----------|
 | **menu.h** | Menu prototypes |
-| **menu.c** | Main menu (5 options: play campaign / custom maps / controls / language / credits), the Easy/Normal/Hard/Extreme difficulty select screen, faction select (also reused to start custom maps), pause, game over/victory |
+| **menu.c** | Main menu (6 options: play campaign / custom maps / controls / stats / language / credits), the Easy/Normal/Hard/Extreme difficulty select screen, faction select (also reused to start custom maps), pause, game over/victory |
 | **ui.h** | HUD prototypes |
 | **ui.c** | In-game HUD: health bar, gold, build panel, tooltips |
 | **map_editor.h** | Map editor prototypes |
@@ -117,6 +117,8 @@ faction_td/
 | **custom_map_menu.c** | Lists the 8 Controller Pak slots with their saved name (play/edit/delete), handles pak formatting with confirmation |
 | **controls_menu.h** | Controls remap screen prototypes |
 | **controls_menu.c** | Lists the 7 remappable actions; A captures the next button press as a new binding, Z resets to defaults, Start saves to the Controller Pak |
+| **stats_menu.h** | Stats screen prototypes |
+| **stats_menu.c** | Two pages (Z switches): lifetime Progress (total kills, best score/fastest clear per campaign, from the Controller Pak) and the current run's Highlights (`ScoreSystem.log`, D-pad scrolls) |
 
 ### `src/resources/` - Asset Loading (2 files)
 
@@ -246,6 +248,8 @@ build/
 |---------|-----------|
 | **README.md** | Main documentation: features, controls, custom maps, Controller Pak, procedural sprites/terrain, score, economy |
 | **STRUCTURE.md** | This file - complete structure guide |
+| **FILE_LIST.txt** | Full repo file tree with a one-line purpose per file/group |
+| **TODO.md** | Roadmap grouped by area, each item grounded in a real gap found while building/reviewing the codebase |
 | **prompts_graficos.md** | Prompt templates for AI image generators (optional — the game's active art doesn't depend on this) |
 
 ---
@@ -255,16 +259,17 @@ build/
 | File | Purpose |
 |---------|-----------|
 | **makefile** | Build system with targets: `make`, `make clean`, `make gen-sprites`, `make help` |
-| **.gitignore** | Ignores `build/`, `filesystem/`, `*.sprite`, `*.z64`, `libdragon/` (vendored SDK, ~90MB), `__pycache__`, etc |
+| **.gitignore** | Ignores `build/`, `filesystem/`, `*.sprite`, `*.z64`, `__pycache__`, etc — `libdragon/` is no longer listed here, it's a tracked git submodule now (see `.gitmodules`) |
+| **.gitmodules** | Declares `libdragon` as a real git submodule pinned to a specific upstream commit, instead of a plain gitignored checkout re-cloned by CI on every run |
 
 ---
 
 ## Project Statistics
 
 ```
-Total source files:       51 files (.c + .h)
-  - Headers (.h):          27
-  - Implementation (.c):   24
+Total source files:       53 files (.c + .h)
+  - Headers (.h):          28
+  - Implementation (.c):   25
 
 Total sprites:             35 generated PNGs (28 units/projectiles + 7 terrain tiles)
                             + 4 reference maps + 1 reference sheet
@@ -275,6 +280,9 @@ Custom map slots:          8 (Controller Pak)
 Campaigns:                 4
 Remappable actions:        7 (Controller Pak)
 Debug overlays/cheats:     18, in one menu
+Persisted progress:        best score, campaigns completed, total kills,
+                            fastest clear time — per campaign (Controller Pak)
+Run event log:             up to 48 curated events/run, RAM-only (Stats screen)
 ```
 
 ---
@@ -320,6 +328,12 @@ In the editor: A paints, L/R cycles terrain, Z cycles setting, C-up/down adjusts
 ```
 Main menu -> CONTROLS -> D-pad to select an action -> A to capture the next button press
 Z resets everything to defaults, Start saves to the Controller Pak, B exits
+```
+
+### 8. View Stats
+```
+Main menu -> STATS -> Z switches between Progress and Highlights pages
+D-pad scrolls the Highlights list, B exits
 ```
 
 ---

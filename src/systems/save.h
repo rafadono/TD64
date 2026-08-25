@@ -40,7 +40,9 @@ typedef struct {
 // Game progress (best score per campaign).
 typedef struct {
     uint32_t best_score[4];
-    uint8_t  campaigns_completed; // bitmask, bit N = campaign N completed at least once
+    uint8_t  campaigns_completed;      // bitmask, bit N = campaign N completed at least once
+    uint32_t total_kills;              // lifetime, across every run (campaign or custom map)
+    uint32_t fastest_clear_seconds[4]; // per campaign; 0 = never completed
 } GameProgress;
 
 // Remapped button bindings (see systems/controls.h). `bindings[action]` is

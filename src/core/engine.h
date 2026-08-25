@@ -48,7 +48,8 @@ typedef enum {
     STATE_VICTORY,
     STATE_CUSTOM_MAP_MENU,
     STATE_MAP_EDITOR,
-    STATE_CONTROLS_MENU
+    STATE_CONTROLS_MENU,
+    STATE_STATS_MENU
 } GameFlowState;
 
 // =============================================================================

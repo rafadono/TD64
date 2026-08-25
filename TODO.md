@@ -17,10 +17,12 @@ guesses — see the note on each item for why it's here.
       overlay.** `src/systems/debug.c` renders `int count_height = 4 + i*3;
       // Mock data` instead of reading the actual `spawn_remaining[]` queue —
       it always shows the same fake bars regardless of the upcoming wave.
-- [ ] **Compute `gold_per_second` and `dps_total` for the debug Economy
-      overlay.** Both fields in `DebugState` are initialized to 0 in
-      `debug.c` and never updated anywhere else — that HUD panel always
-      renders empty bars.
+- [x] **Compute `gold_per_second` and `dps_total` for the debug Economy
+      overlay.** `debug_track_gold_earned()`/`debug_track_damage_dealt()`
+      accumulate every gold gain (kills, wave-clear bonus) and damage hit;
+      `debug_update_perf()` — already called once/sec from `main.c`'s FPS
+      block — rolls the accumulated total into the displayed rate and resets
+      it, so the bars now move instead of staying empty.
 - [ ] **Persist the selected language across power cycles.** `lang.c` resets
       to `LANG_DEFAULT` (English) on every boot; add a field to
       `GameProgress` (`save.h`/`save.c`) so the last chosen language survives
@@ -120,16 +122,29 @@ guesses — see the note on each item for why it's here.
 - [ ] Auto-attach `TD64.z64` to a GitHub Release when a version tag is pushed.
 - [ ] Optional: a headless emulator smoke test in CI (boot the ROM, confirm
       it doesn't hang/crash in the first few seconds).
-- [ ] Turn `libdragon/` into a real git submodule — `.libdragon/config.json`
-      already declares `"vendorStrategy": "submodule"`, but it's just a
-      plain gitignored checkout today.
+- [x] Turn `libdragon/` into a real git submodule — matches what
+      `.libdragon/config.json` already declared (`"vendorStrategy":
+      "submodule"`). CI now checks it out via `actions/checkout`'s
+      `submodules: true` instead of a separate `git clone` of the default
+      branch, and — as a side effect — the vendored commit is now pinned
+      instead of silently drifting to upstream HEAD on every CI run (the
+      image *tag* itself, `:latest`, is a separate still-open item above).
 
 ## Nice-to-have / Exploratory
 
 - [ ] Additional languages beyond EN/ES — `lang.c`'s string-table
       architecture already supports adding a column with zero UI code
       changes.
-- [ ] An achievements/stats screen beyond best score (e.g. total kills
-      across all runs, fastest campaign clear).
-- [ ] Replay/spectate of a completed run — would need `ScoreSystem` to log a
-      timeline of events instead of only aggregate totals.
+- [x] An achievements/stats screen beyond best score: a new STATS option on
+      the main menu (`src/ui/stats_menu.h`/`.c`) showing total kills across
+      all runs and fastest campaign clear time, alongside the existing best
+      score, all persisted to the Controller Pak (`GameProgress`, extended
+      in `save.h`).
+- [x] `ScoreSystem` now logs a curated event timeline (`RunLog`, `score.h`)
+      instead of only aggregate totals — map transitions, perfect/hero-wave
+      clears, hero kills, and the run's outcome, each timestamped. Viewed
+      via the STATS screen's "Highlights" page. **Scope note:** this is a
+      RAM-only highlights list, not the frame-accurate replay/spectate this
+      item originally asked for — true replay would need deterministic RNG
+      plus recorded input playback, a bigger rearchitecture left for later
+      if it's still wanted.

@@ -17,6 +17,7 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - [Campaign Difficulty](#campaign-difficulty)
 - [Camera and Bigger Maps](#camera-and-bigger-maps)
 - [Remappable Controls](#remappable-controls)
+- [Stats and Achievements](#stats-and-achievements)
 - [Animated Sprites and Textured Terrain](#animated-sprites-and-textured-terrain)
 - [Language](#language)
 - [Debug System](#debug-system)
@@ -85,7 +86,12 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - Modular audio system (background music per map and sound effects)
 - Unique active special ability for each of the 24 units
 - Modern input (libdragon's `joypad_*`), 7 remappable in-game actions saved
-  to the Controller Pak, and a unified debug menu (18 overlays/cheats)
+  to the Controller Pak, and a unified debug menu (18 overlays/cheats), with
+  its Economy overlay's gold/sec and DPS bars driven by real per-second
+  totals (not placeholders)
+- Lifetime stats (total kills, best score and fastest campaign clear per
+  campaign) persisted to the Controller Pak, plus a curated "last run
+  highlights" event timeline — see [Stats and Achievements](#stats-and-achievements)
 - English/Spanish string-table localization, toggled from the main menu
 
 ---
@@ -254,6 +260,31 @@ maps and progress) and load automatically on boot if a saved config is
 found; otherwise the defaults from the table in [Controls](#controls) apply.
 C-up can't be assigned to an action, since it's hardwired to open the debug
 menu — an action bound to it would become unreachable whenever that menu is open.
+
+## Stats and Achievements
+
+**STATS** on the main menu opens a two-page screen (`src/ui/stats_menu.h`/`.c`),
+switched with Z:
+
+- **Progress** — lifetime totals read from the Controller Pak: total kills
+  across every run (campaign or custom map), and per-campaign best score +
+  fastest clear time (`GameProgress.total_kills`/`fastest_clear_seconds[4]`,
+  `src/systems/save.h`). Shows the same Controller Pak status message as
+  Custom Maps if none is available.
+- **Highlights** — the current/last completed run's event timeline: map
+  transitions, perfect or hero-interval wave clears, hero kills, and the
+  run's outcome (victory/defeat), each with a timestamp. This is
+  `ScoreSystem.log` (`src/systems/score.h`), a curated, RAM-only list capped
+  at 48 entries — **not** a frame-accurate replay/spectate system (that
+  would need deterministic RNG plus recorded input, a larger rearchitecture
+  left for later). The log resets at the start of every new run, so it only
+  shows something if you check Stats before starting another run.
+
+| Button | Action |
+|-------|--------|
+| D-pad up/down | Scroll the Highlights list |
+| Z | Switch between the Progress and Highlights pages |
+| B | Return to the main menu |
 
 ## Animated Sprites and Textured Terrain
 
@@ -693,6 +724,16 @@ constraints — today no active game asset uses that path, all active art is
 The game is designed to build against the official Libdragon release found
 on GitHub and Docker Hub, without altering any internal library file.
 Compiler tweaks are isolated to the project's local `makefile`.
+
+`libdragon/` is a real git submodule (`.gitmodules`), pinned to a specific
+upstream commit rather than always tracking the latest default branch.
+Cloning this repo for the first time needs one extra step:
+
+```bash
+git clone --recurse-submodules <this-repo-url>
+# or, if already cloned without that flag:
+git submodule update --init
+```
 
 ### Continuous Integration
 

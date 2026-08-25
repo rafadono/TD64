@@ -10,6 +10,7 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_MENU_PLAY_CAMPAIGN]      = { "PLAY CAMPAIGN",              "JUGAR CAMPANA" },
     [STR_MENU_CUSTOM_MAPS]        = { "CUSTOM MAPS",                "MAPAS CUSTOM" },
     [STR_MENU_CONTROLS]           = { "CONTROLS",                   "CONTROLES" },
+    [STR_MENU_STATS]              = { "STATS",                      "ESTADISTICAS" },
     [STR_MENU_CREDITS]            = { "CREDITS",                    "CREDITOS" },
     [STR_MENU_LANGUAGE]           = { "LANGUAGE",                   "IDIOMA" },
     [STR_HINT_MAIN_MENU]          = { "D-PAD: MOVE  A: CONFIRM",    "D-PAD: MOVER  A: CONFIRMAR" },
@@ -122,6 +123,21 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_ACTION_UPGRADE]         = { "UPGRADE TOWER",                "MEJORAR TORRE" },
     [STR_ACTION_SPAWN_WAVE]      = { "SPAWN WAVE",                  "LANZAR OLEADA" },
     [STR_ACTION_PAUSE]           = { "PAUSE",                       "PAUSA" },
+
+    [STR_STATS_TITLE]            = { "STATS",                       "ESTADISTICAS" },
+    [STR_STATS_PAGE_PROGRESS]    = { "PROGRESS",                    "PROGRESO" },
+    [STR_STATS_PAGE_HIGHLIGHTS]  = { "LAST RUN HIGHLIGHTS",         "DESTACADOS DE LA PARTIDA" },
+    [STR_STATS_TOTAL_KILLS]      = { "TOTAL KILLS",                 "BAJAS TOTALES" },
+    [STR_STATS_BEST_SCORE]       = { "BEST SCORE",                  "MEJOR PUNTAJE" },
+    [STR_STATS_FASTEST_CLEAR]    = { "FASTEST CLEAR",                "MEJOR TIEMPO" },
+    [STR_STATS_NOT_CLEARED]      = { "NEVER CLEARED",                "NUNCA COMPLETADA" },
+    [STR_STATS_NO_RUN]           = { "NO RUN LOGGED THIS SESSION",   "SIN PARTIDA REGISTRADA" },
+    [STR_STATS_HINT]             = { "D-PAD SELECT  Z PAGE  B BACK", "D-PAD SELECCIONA  Z PAGINA  B VOLVER" },
+    [STR_EVENT_MAP_STARTED]      = { "MAP STARTED",                  "MAPA INICIADO" },
+    [STR_EVENT_WAVE_CLEARED]     = { "WAVE CLEARED",                 "OLEADA SUPERADA" },
+    [STR_EVENT_HERO_KILLED]      = { "HERO DEFEATED",                "HEROE DERROTADO" },
+    [STR_EVENT_VICTORY]          = { "VICTORY",                      "VICTORIA" },
+    [STR_EVENT_DEFEAT]           = { "DEFEAT",                       "DERROTA" },
 };
 
 static Language current_lang = LANG_DEFAULT;

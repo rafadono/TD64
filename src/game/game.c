@@ -32,6 +32,15 @@ static int wave_count_for_type(UnitType t, int wave) {
         case UNIT_TANK:
             if (wave < WAVE_TANK_START_WAVE) return 0;
             return WAVE_TANK_BASE + (wave - WAVE_TANK_START_WAVE) / 4 * WAVE_TANK_SCALE;
+        case UNIT_FLYER:
+            if (wave < WAVE_FLYER_START_WAVE) return 0;
+            return WAVE_FLYER_BASE + (wave - WAVE_FLYER_START_WAVE) / 3 * WAVE_FLYER_SCALE;
+        case UNIT_ARMORED:
+            if (wave < WAVE_ARMORED_START_WAVE) return 0;
+            return WAVE_ARMORED_BASE + (wave - WAVE_ARMORED_START_WAVE) / 4 * WAVE_ARMORED_SCALE;
+        case UNIT_WARDED:
+            if (wave < WAVE_WARDED_START_WAVE) return 0;
+            return WAVE_WARDED_BASE + (wave - WAVE_WARDED_START_WAVE) / 4 * WAVE_WARDED_SCALE;
         default: return 0;
     }
 }
@@ -202,7 +211,8 @@ void game_spawn_wave(GameState* game) {
     // Builds the spawn queue — game_process_spawns() drains it one unit per
     // tick on each game_update() call, instead of instantiating everything here.
     int total = 0;
-    for (int t = 0; t < UNIT_TYPE_COUNT - 1; t++) {  // -1: skip hero
+    for (int t = 0; t < UNIT_TYPE_COUNT; t++) {
+        if (t == UNIT_HERO) continue; // hero has its own boss-interval logic below
         int count = wave_count_for_type((UnitType)t, game->wave);
         game->spawn_remaining[t] = count;
         total += count;

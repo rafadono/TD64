@@ -138,6 +138,8 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_EVENT_HERO_KILLED]      = { "HERO DEFEATED",                "HEROE DERROTADO" },
     [STR_EVENT_VICTORY]          = { "VICTORY",                      "VICTORIA" },
     [STR_EVENT_DEFEAT]           = { "DEFEAT",                       "DERROTA" },
+
+    [STR_COMBAT_RESIST]          = { "RESIST",                       "RESISTE" },
 };
 
 static Language current_lang = LANG_DEFAULT;

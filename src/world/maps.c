@@ -2,14 +2,6 @@
 #include "../core/engine.h"
 #include <string.h>
 
-// Wave composition per map: how many of each unit type appear
-// Format: [UNIT_SCOUT, UNIT_WARRIOR, UNIT_ARCHER, UNIT_MAGE, UNIT_TANK]
-// (UNIT_HERO is spawned separately as a boss)
-typedef struct {
-    int base_counts[UNIT_TYPE_COUNT - 1]; // No hero in waves
-    int wave_scale;   // +N units total per extra wave
-} WaveTemplate;
-
 static void fill_grass(TerrainMap* m) {
     terrain_init(m, TERRAIN_GRASS); // fills the whole WORLD-sized grid already
 }

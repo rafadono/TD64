@@ -53,10 +53,17 @@ guesses — see the note on each item for why it's here.
       `TERRAIN_LAVA` for real (previously a `TERRAIN_WATER` placeholder).
       `TERRAIN_PATH` cannot be built on and is also what free-form custom
       paths are painted with (see Map Editor above).
-- [ ] More maps, factions, or unit types beyond the current 4 factions x 6
-      roles — deliberately NOT attempted in this pass; a new faction alone
-      needs 6 balanced units + 6 new animated sprite sheets, which is a
-      larger, separate content investment.
+- [x] 3 enemy-only elite unit types per faction (Armored/Warded/Flyer, 12
+      total), inspired by *Final Fantasy: Crystal Defenders*: each is fully
+      immune to one or two `DamageType`s (`src/config/units_data.h`'s
+      `immune_to_mask`) — see [Enemy Resistances](README.md#enemy-resistances).
+      Never placeable as towers (`PLAYABLE_UNIT_TYPE_COUNT`), appear from
+      wave 4+, with their own procedurally-generated sprites
+      (`tools/gen_sprites.py`'s `draw_armored`/`draw_warded`/`draw_flyer`).
+- [ ] More maps or factions beyond the current 4 — deliberately NOT
+      attempted in this pass; a new faction alone needs 6 balanced playable
+      units + 6 new animated sprite sheets (plus matching enemy-only
+      variants for consistency), a larger, separate content investment.
 - [x] A difficulty-selection screen for the 4 fixed campaigns
       (`STATE_DIFFICULTY_SELECT`, between "Play Campaign" and faction
       select): Easy/Normal/Hard/Extreme scale enemy HP/damage/speed, tower
@@ -122,6 +129,12 @@ guesses — see the note on each item for why it's here.
 - [ ] Auto-attach `TD64.z64` to a GitHub Release when a version tag is pushed.
 - [ ] Optional: a headless emulator smoke test in CI (boot the ROM, confirm
       it doesn't hang/crash in the first few seconds).
+- [x] Host-native unit tests for the pure-logic modules (score, pathfinding,
+      camera, controls, unit resistances) — `tests/` (plain gcc, no N64
+      toolchain needed, see `tests/README.md`). Not yet wired into CI
+      (`.github/workflows/build.yml` only builds the ROM); running
+      `bash tests/run_tests.sh` in the same Docker image would be a cheap
+      addition if that's wanted.
 - [x] Turn `libdragon/` into a real git submodule — matches what
       `.libdragon/config.json` already declared (`"vendorStrategy":
       "submodule"`). CI now checks it out via `actions/checkout`'s

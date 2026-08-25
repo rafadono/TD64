@@ -21,7 +21,10 @@ static const char* TYPE_NAMES[UNIT_TYPE_COUNT] = {
     "archer",
     "mage",
     "tank",
-    "hero"
+    "hero",
+    "armored", // enemy-only elite variants (UNIT_ARMORED/WARDED/FLYER, factions.h)
+    "warded",
+    "flyer"
 };
 
 // Must match the TerrainType order in terrain.h

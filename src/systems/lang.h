@@ -131,6 +131,8 @@ typedef enum {
     STR_EVENT_VICTORY,
     STR_EVENT_DEFEAT,
 
+    STR_COMBAT_RESIST,
+
     STR_COUNT
 } StringId;
 

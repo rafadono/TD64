@@ -78,10 +78,13 @@ static void stat_bar(int x, int y, int w, int h, float pct, color_t bar_c) {
     border_rect(x, y, w, h, RGBA32(0, 0, 0, 180));
 }
 
-// Faction average of a stat (normalised 0..1)
+// Faction average of a stat (normalised 0..1). Only the 6 playable roles —
+// the enemy-only elite variants (UNIT_ARMORED/WARDED/FLYER) would skew this
+// preview with stats (0 damage/range, since they never attack as towers)
+// that have nothing to do with what the player is actually choosing here.
 static float faction_stat_pct(FactionId f, int stat, float max_val) {
     float sum = 0;
-    for (int t = 0; t < UNIT_TYPE_COUNT; t++) {
+    for (int t = 0; t < PLAYABLE_UNIT_TYPE_COUNT; t++) {
         const UnitStats* s = unit_get_stats(f, (UnitType)t);
         if (!s) continue;
         switch (stat) {
@@ -91,7 +94,7 @@ static float faction_stat_pct(FactionId f, int stat, float max_val) {
             case 3: sum += s->move_speed;   break;
         }
     }
-    float pct = (sum / UNIT_TYPE_COUNT) / max_val;
+    float pct = (sum / PLAYABLE_UNIT_TYPE_COUNT) / max_val;
     return pct > 1.0f ? 1.0f : pct;
 }
 
@@ -165,12 +168,14 @@ static void draw_card_large(int y, FactionId f) {
     // Description (y+23..y+38)
     rdpq_text_printf(NULL, 1, CARD_X+8, y+32, "%s", faction_get_description(f));
 
-    // Unit type icons (y+41..y+57) — 6 icons, each slightly different size
-    // to hint at their role
-    static const int ICON_W[UNIT_TYPE_COUNT] = { 8, 11, 9, 10, 14, 13 };
-    static const int ICON_H[UNIT_TYPE_COUNT] = { 11, 13, 9, 13, 15, 16 };
+    // Unit type icons (y+41..y+57) — the 6 playable roles, each slightly
+    // different size to hint at their role. The enemy-only elite variants
+    // (UNIT_ARMORED/WARDED/FLYER) are never placeable, so they don't belong
+    // in a "what can I build" preview.
+    static const int ICON_W[PLAYABLE_UNIT_TYPE_COUNT] = { 8, 11, 9, 10, 14, 13 };
+    static const int ICON_H[PLAYABLE_UNIT_TYPE_COUNT] = { 11, 13, 9, 13, 15, 16 };
     int ix = CARD_X + 8;
-    for (int t = 0; t < UNIT_TYPE_COUNT; t++) {
+    for (int t = 0; t < PLAYABLE_UNIT_TYPE_COUNT; t++) {
         int iw = ICON_W[t], ih = ICON_H[t];
         int iy = y + 41 + (16 - ih); // bottom-align
         panel(ix, iy, iw, ih, p->primary, RGBA32(0,0,0,200));

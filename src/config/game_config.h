@@ -69,6 +69,23 @@
 #define WAVE_TANK_START_WAVE            8
 #define WAVE_TANK_SCALE                 1       // +1 every 4 waves
 
+// Enemy-only elite variants (UNIT_ARMORED/WARDED/FLYER, factions.h) — same
+// BASE+scale-every-N-waves shape as archer/mage/tank above. Start waves are
+// deliberately low enough that even an Easy map (WAVES_PER_MAP_EASY=10
+// below) sees at least the Flyer, so the resistance mechanic isn't locked
+// behind Hard/Extreme only.
+#define WAVE_FLYER_BASE                 1
+#define WAVE_FLYER_START_WAVE           4       // needs an Archer or a Mage
+#define WAVE_FLYER_SCALE                1       // +1 every 3 waves
+
+#define WAVE_ARMORED_BASE               1
+#define WAVE_ARMORED_START_WAVE         6       // needs a Mage
+#define WAVE_ARMORED_SCALE              1       // +1 every 4 waves
+
+#define WAVE_WARDED_BASE                1
+#define WAVE_WARDED_START_WAVE          8       // needs a Scout/Warrior/Archer/Tank/Hero
+#define WAVE_WARDED_SCALE               1       // +1 every 4 waves
+
 // Hero (boss) — how often it appears
 #define WAVE_HERO_INTERVAL              5       // Waves 5, 10, 15...
 #define WAVE_HERO_COUNT                 1       // How many heroes per boss wave

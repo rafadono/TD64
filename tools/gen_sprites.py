@@ -488,6 +488,109 @@ def draw_hero(p, faction, frame=0):
     outline(img)
     return img
 
+def draw_armored(p, faction, frame=0):
+    """Enemy-only elite variant (UNIT_ARMORED): immune to all physical damage.
+    Fully plated, no visible weak points, no held weapon (it never attacks)."""
+    l1dx, l1dy, l2dx, l2dy, wdx, wdy = anim_offsets(frame)
+    img = img32()
+    # Heavy plated legs, fully encased
+    shaded_rect(img, 8+l1dx, 22+l1dy, 7, 8, p["dark"], p["light"], BLK)
+    shaded_rect(img, 17+l2dx, 22+l2dy, 7, 8, p["dark"], p["light"], BLK)
+
+    # Massive fused chest plate, no gaps
+    shaded_rect(img, 5, 10, 22, 13, p["dark"], p["light"], BLK)
+    shaded_rect(img, 8, 12, 16, 9, p["secondary"], p["accent"], p["dark"])
+    for rx in (7, 24):
+        for ry in range(11, 21, 3):
+            px(img, rx, ry, p["accent"])  # rivets along the seams
+
+    # Fully-enclosed domed helm, only a thin eye slit
+    shaded_rect(img, 9, 2, 14, 9, p["dark"], p["light"], BLK)
+    rect(img, 11, 7, 10, 2, p["eye"])
+
+    if faction == "dawnguard":
+        px(img, 16, 1, p["accent"])                 # holy crest tip
+    elif faction == "ironbone":
+        rect(img, 14, 0, 4, 2, p["secondary"])       # bone crown nub
+    elif faction == "ashclaw":
+        px(img, 9, 3, p["secondary"]); px(img, 22, 3, p["secondary"])  # stubby horns
+    else:
+        circle(img, 16, 1, 1, p["accent"])           # arcane rune-stud
+
+    outline(img)
+    return img
+
+def draw_warded(p, faction, frame=0):
+    """Enemy-only elite variant (UNIT_WARDED): immune to magic damage.
+    A hooded ward-bearer with a visible glyph/barrier instead of a weapon."""
+    l1dx, l1dy, l2dx, l2dy, wdx, wdy = anim_offsets(frame)
+    hem_shift = l1dx - l2dx
+    img = img32()
+    # Flowing robe (glides rather than steps, like the mage)
+    shaded_rect(img, 8, 12, 16, 12, p["primary"], p["light"], p["dark"])
+    shaded_rect(img, 6+hem_shift, 22, 20, 6, p["primary"], p["light"], p["dark"])
+
+    # Ward glyph glowing on the chest
+    circle(img, 16, 17, 3, p["secondary"])
+    px(img, 16, 17, WHT)
+
+    # Hood
+    shaded_rect(img, 10, 4, 12, 8, p["dark"], p["primary"], BLK)
+    px(img, 13, 8, p["eye"]); px(img, 19, 8, p["eye"])
+
+    # Floating ward-halo — the "resists magic" tell, present on every faction
+    circle(img, 16, 1, 3, (*p["secondary"][:3], 160))
+
+    # Raised hand with a shimmering barrier orb instead of a weapon
+    circle(img, 25+wdx, 14+wdy, 3, (*p["secondary"][:3], 200))
+    px(img, 25+wdx, 14+wdy, WHT)
+
+    if faction == "dawnguard":
+        px(img, 16, 0, p["accent"])
+    elif faction == "ironbone":
+        px(img, 14, 8, WHT); px(img, 18, 8, WHT)  # hollow bone-white eyes
+    elif faction == "ashclaw":
+        rect(img, 12, 3, 8, 2, p["secondary"])     # tribal ward-band
+    else:
+        px(img, 16, 2, WHT)
+
+    outline(img)
+    return img
+
+def draw_flyer(p, faction, frame=0):
+    """Enemy-only elite variant (UNIT_FLYER): immune to melee damage only.
+    Small, hovers above the path — wings use the leg-offset animation slots
+    (a flap cycle) instead of a walk cycle, since it never touches ground."""
+    l1dx, l1dy, l2dx, l2dy, wdx, wdy = anim_offsets(frame)
+    img = img32()
+    # Lean floating body, legs tucked (no ground contact)
+    shaded_rect(img, 12, 14, 8, 10, p["primary"], p["light"], p["dark"])
+
+    # Wings spread, flapping via the repurposed leg-offset slots
+    shaded_rect(img, 2+l1dx, 10+l1dy, 10, 6, p["secondary"], p["accent"], p["dark"])
+    shaded_rect(img, 20+l2dx, 10+l2dy, 10, 6, p["secondary"], p["accent"], p["dark"])
+
+    # Small head
+    circle(img, 16, 10, 4, p["skin"])
+    px(img, 14, 9, p["eye"]); px(img, 18, 9, p["eye"])
+
+    # Faint hover shadow beneath, since it flies over the path rather than
+    # walking it — a quiet visual cue that melee can't reach it.
+    for x in range(12, 20):
+        px(img, x, 27, (0, 0, 0, 60))
+
+    if faction == "dawnguard":
+        px(img, 16, 6, p["accent"])                  # small halo glint
+    elif faction == "ironbone":
+        px(img, 13, 12, p["secondary"]); px(img, 19, 12, p["secondary"])  # tattered wing-tips
+    elif faction == "ashclaw":
+        px(img, 16, 22, p["secondary"])              # spiked tail-tip
+    else:
+        circle(img, 16, 22, 1, p["accent"])           # trailing arcane wisp
+
+    outline(img)
+    return img
+
 def draw_projectile(p, faction, size=16):
     img = Image.new("RGBA", (size, size), T)
     c = size // 2
@@ -535,8 +638,10 @@ def draw_projectile(p, faction, size=16):
 # SPRITE SHEET BUILDER
 # ===========================================================================
 
-DRAWERS = [draw_scout, draw_warrior, draw_archer, draw_mage, draw_tank, draw_hero]
-TYPE_NAMES = ["scout", "warrior", "archer", "mage", "tank", "hero"]
+DRAWERS = [draw_scout, draw_warrior, draw_archer, draw_mage, draw_tank, draw_hero,
+           draw_armored, draw_warded, draw_flyer]
+TYPE_NAMES = ["scout", "warrior", "archer", "mage", "tank", "hero",
+              "armored", "warded", "flyer"]
 
 def make_unit_sheet(drawer, p, faction):
     """Arma la tira horizontal de FRAMES_TOTAL frames (idle+walk+attack) para

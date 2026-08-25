@@ -73,14 +73,17 @@ static void handle_play_input(float dt) {
         return;
     }
 
-    // Cycle unit type to place — remappable, default L = prev, R = next
+    // Cycle unit type to place — remappable, default L = prev, R = next.
+    // Bounded by PLAYABLE_UNIT_TYPE_COUNT, not UNIT_TYPE_COUNT: the enemy-
+    // only elite variants (UNIT_ARMORED/WARDED/FLYER) must never become
+    // something the player can select and place.
     if (action_pressed(kd, ACTION_PREV_UNIT)) {
         game.selected_unit_type--;
-        if (game.selected_unit_type < 0) game.selected_unit_type = UNIT_TYPE_COUNT - 1;
+        if (game.selected_unit_type < 0) game.selected_unit_type = PLAYABLE_UNIT_TYPE_COUNT - 1;
     }
     if (action_pressed(kd, ACTION_NEXT_UNIT)) {
         game.selected_unit_type++;
-        if (game.selected_unit_type >= UNIT_TYPE_COUNT) game.selected_unit_type = 0;
+        if (game.selected_unit_type >= PLAYABLE_UNIT_TYPE_COUNT) game.selected_unit_type = 0;
     }
 
     // Move cursor (and auto-scroll the camera to follow it) — always the

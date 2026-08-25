@@ -226,11 +226,46 @@ bool unit_upgrade(Entity* e, GameState* game) {
 }
 
 // -----------------------------------------------------------------------------
+// Resolves the actual tower behind a hit: `attacker` may be the tower
+// itself (ability-triggered instant damage) or one of its projectiles (the
+// common case, which doesn't carry the tower's faction/unit_type directly).
+// Both damage-type resistance checks and XP awarding need the real source
+// tower, so they share this lookup instead of duplicating it.
+static Entity* resolve_source_tower(Entity* attacker) {
+    if (!attacker) return NULL;
+    if (attacker->mode == MODE_TOWER) return attacker;
+    if (attacker->is_projectile) {
+        for (int k = 0; k < MAX_ENTITIES; k++) {
+            Entity* tw = &pool[k];
+            if (tw->active && tw->mode == MODE_TOWER && tw->id == attacker->owner_id) {
+                return tw;
+            }
+        }
+    }
+    return NULL;
+}
+
 static void entity_deal_damage(Entity* attacker, Entity* target, int damage, GameState* game) {
     if (!target->active) return;
 
+    Entity* source_tower = resolve_source_tower(attacker);
+
     if (debug.one_hit_kills && target->mode == MODE_RUNNER && damage < target->hp) {
         damage = target->hp;
+    } else if (source_tower) {
+        // Crystal Defenders-style resistances: some enemy variants (see
+        // UNIT_ARMORED/WARDED/FLYER, factions.h) are fully immune to one
+        // damage type. A blocked hit deals nothing at all — not even a
+        // reduced number — so the player gets an unambiguous "wrong tower
+        // for this enemy" signal instead of a confusing "-0".
+        const UnitStats* target_stats = unit_get_stats(target->faction, target->unit_type);
+        const UnitStats* tower_stats  = unit_get_stats(source_tower->faction, source_tower->unit_type);
+        if (tower_stats && unit_stats_blocks_damage(target_stats, tower_stats->damage_type)) {
+            float ftx = target->x, fty = target->y - 10;
+            camera_apply(&game->camera, &ftx, &fty);
+            floating_text_spawn(T(STR_COMBAT_RESIST), ftx, fty, RGBA32(190, 190, 210, 255));
+            return;
+        }
     }
 
     target->hp -= damage;
@@ -276,26 +311,9 @@ static void entity_deal_damage(Entity* attacker, Entity* target, int damage, Gam
         audio_play_sfx("coin");
 
         // XP for the tower
-        Entity* xp_receiver = NULL;
-        if (attacker) {
-            if (attacker->mode == MODE_TOWER) {
-                xp_receiver = attacker;
-            } else if (attacker->is_projectile) {
-                // Find the tower that actually fired this projectile (by owner_id),
-                // not just any tower currently targeting the same runner — two towers
-                // can share a target, and the shooter may have since retargeted.
-                for (int k = 0; k < MAX_ENTITIES; k++) {
-                    Entity* tw = &pool[k];
-                    if (tw->active && tw->mode == MODE_TOWER && tw->id == attacker->owner_id) {
-                        xp_receiver = tw;
-                        break;
-                    }
-                }
-            }
-        }
-        if (xp_receiver) {
-            const UnitStats* s = unit_get_stats(xp_receiver->faction, xp_receiver->unit_type);
-            level_add_xp(&xp_receiver->level_data, target->xp_reward, s, xp_receiver);
+        if (source_tower) {
+            const UnitStats* s = unit_get_stats(source_tower->faction, source_tower->unit_type);
+            level_add_xp(&source_tower->level_data, target->xp_reward, s, source_tower);
         }
         target->active = false;
     }
@@ -423,11 +441,16 @@ void entities_update(float dt, GameState* game) {
             e->ability_timer -= dt;
             if (e->ability_timer <= 0) e->ability_ready = true;
 
-            // Find/validate target
+            // Find/validate target. A target this tower is fully immune-
+            // blocked against (see UNIT_ARMORED/WARDED/FLYER) doesn't count
+            // as "valid" here, so the tower doesn't lock onto something it
+            // can never hurt while a killable enemy is also in range.
+            DamageType my_dmg_type = s ? s->damage_type : DMG_PHYSICAL_MELEE;
             bool target_valid = false;
             if (e->target && e->target->active && e->target->id == e->target_id && e->target->mode == MODE_RUNNER) {
                 float d = distance_squared(e->x, e->y, e->target->x, e->target->y);
-                if (d <= e->attack_range * e->attack_range) {
+                const UnitStats* target_stats = unit_get_stats(e->target->faction, e->target->unit_type);
+                if (d <= e->attack_range * e->attack_range && !unit_stats_blocks_damage(target_stats, my_dmg_type)) {
                     target_valid = true;
                 }
             }
@@ -436,16 +459,29 @@ void entities_update(float dt, GameState* game) {
                 e->target = NULL;
                 e->target_id = 0;
                 float closest = e->attack_range * e->attack_range;
+                // Fallback: the closest in-range enemy even if this tower
+                // can't damage it — better to keep it (e.g. for an AoE
+                // ability that might still hit OTHER nearby enemies) than
+                // to sit fully idle when only immune enemies are near.
+                float closest_fallback = e->attack_range * e->attack_range;
+                Entity* fallback = NULL;
                 for (int j = 0; j < MAX_ENTITIES; j++) {
                     Entity* runner = &pool[j];
                     if (!runner->active || runner->mode != MODE_RUNNER) continue;
                     if (runner->team == e->team) continue; // Don't attack own team
                     float d = distance_squared(e->x, e->y, runner->x, runner->y);
-                    if (d < closest) {
-                        e->target = runner;
-                        e->target_id = runner->id;
-                        closest = d;
+                    if (d >= closest && d >= closest_fallback) continue;
+                    const UnitStats* target_stats = unit_get_stats(runner->faction, runner->unit_type);
+                    if (!unit_stats_blocks_damage(target_stats, my_dmg_type)) {
+                        if (d < closest) { e->target = runner; e->target_id = runner->id; closest = d; }
+                    } else if (d < closest_fallback) {
+                        fallback = runner;
+                        closest_fallback = d;
                     }
+                }
+                if (!e->target && fallback) {
+                    e->target = fallback;
+                    e->target_id = fallback->id;
                 }
             }
 

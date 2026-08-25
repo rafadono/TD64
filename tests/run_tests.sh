@@ -25,6 +25,7 @@ run_suite score tests/test_score.c src/systems/score.c
 run_suite pathfinding tests/test_pathfinding.c src/world/pathfinding.c
 run_suite camera tests/test_camera.c src/systems/effects.c
 run_suite controls tests/test_controls.c src/systems/controls.c tests/fakes/save_stub.c
+run_suite units tests/test_units.c src/config/units_data.c src/systems/lang.c
 
 if [ "$FAIL" -ne 0 ]; then
     echo "SOME TEST SUITES FAILED"

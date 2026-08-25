@@ -3,6 +3,7 @@
 
 #include "factions.h"
 #include <libdragon.h>
+#include <stdbool.h>
 
 // =============================================================================
 // UnitStats
@@ -47,7 +48,29 @@ typedef struct UnitStats {
     const char* ability_name;   // Ability name
     float ability_cooldown;     // 0 = has none
 
+    // --- Resistances (Crystal Defenders-style) ---
+    // damage_type: what type of damage THIS unit deals when attacking as a
+    // tower (irrelevant/unused for the enemy-only types below, which never
+    // attack). immune_to_mask: bitmask of DamageType this unit takes ZERO
+    // damage from when it's the target (0 = no immunities — every one of
+    // the original 6 playable roles). Appended at the end of the struct so
+    // every existing positional initializer in units_data.c keeps working;
+    // only entries that explicitly set them differ.
+    DamageType damage_type;
+    uint8_t    immune_to_mask;
+
 } UnitStats;
+
+// Convenience masks for immune_to_mask.
+#define IMMUNE_TO_PHYSICAL   ((1 << DMG_PHYSICAL_MELEE) | (1 << DMG_PHYSICAL_RANGED))
+#define IMMUNE_TO_MAGIC      (1 << DMG_MAGIC)
+#define IMMUNE_TO_MELEE_ONLY (1 << DMG_PHYSICAL_MELEE)
+
+// True if a hit of `atk` type is fully negated by `target`'s immunities.
+static inline bool unit_stats_blocks_damage(const UnitStats* target, DamageType atk) {
+    if (!target) return false;
+    return (target->immune_to_mask & (1 << atk)) != 0;
+}
 
 // =============================================================================
 // Main table — defined in units_data.c

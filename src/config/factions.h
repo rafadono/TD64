@@ -35,8 +35,35 @@ typedef enum {
     UNIT_MAGE    = 3,  // AoE, long range, slow cooldown
     UNIT_TANK    = 4,  // Very high HP, slow, expensive
     UNIT_HERO    = 5,  // Unique per faction, very powerful
-    UNIT_TYPE_COUNT = 6
+
+    // --- Enemy-only elite variants (never placeable as towers — see
+    // PLAYABLE_UNIT_TYPE_COUNT below) introduced in later waves, inspired by
+    // Final Fantasy: Crystal Defenders' resistance mechanic: each is fully
+    // immune to one or two DamageType(s) (see units_data.h), so beating one
+    // requires bringing the right tower type, not just more towers. ---
+    UNIT_ARMORED = 6,  // Immune to ALL physical damage (melee + ranged) — needs a Mage
+    UNIT_WARDED  = 7,  // Immune to magic damage — needs Scout/Warrior/Archer/Tank/Hero
+    UNIT_FLYER   = 8,  // Immune to melee only — needs an Archer or a Mage
+
+    UNIT_TYPE_COUNT = 9
 } UnitType;
+
+// The first PLAYABLE_UNIT_TYPE_COUNT values of UnitType are placeable as
+// towers (cycled with L/R in the build menu, ui.c); UNIT_ARMORED/WARDED/
+// FLYER only ever appear as enemies and must stay excluded from that cycle.
+#define PLAYABLE_UNIT_TYPE_COUNT 6
+
+// =============================================================================
+// DAMAGE TYPES — what kind of damage a tower's attack deals. Matched against
+// a target's immune_to_mask (units_data.h) in entity_deal_damage() to decide
+// whether a hit lands at all.
+// =============================================================================
+typedef enum {
+    DMG_PHYSICAL_MELEE  = 0,  // Scout / Warrior / Tank (and most Heroes' base attack)
+    DMG_PHYSICAL_RANGED = 1,  // Archer (arrows/thrown weapons)
+    DMG_MAGIC           = 2,  // Mage (and some Heroes)
+    DAMAGE_TYPE_COUNT   = 3
+} DamageType;
 
 // =============================================================================
 // TEAM (in any match, a unit belongs to the player or the enemy)

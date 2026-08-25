@@ -16,17 +16,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <stddef.h> // NULL — real libdragon.h transitively pulls this in too
 
 // ---- color_t: used by value in several structs (Entity.tint, particles,
 // terrain modifiers) and passed to draw calls. Matches the real struct's
 // shape closely enough for our purposes (only fields are ever touched, no
 // pointer arithmetic/size assumptions rely on it beyond that). ----
 typedef struct { uint8_t r, g, b, a; } color_t;
-static inline color_t fake_rgba32(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    color_t c = { r, g, b, a };
-    return c;
-}
-#define RGBA32(r, g, b, a) fake_rgba32((r), (g), (b), (a))
+// A compound literal, not a function call: units_data.c uses RGBA32() (via
+// its local C() shorthand) inside a file-scope `const` array initializer,
+// which requires a constant expression — a function call wouldn't qualify.
+#define RGBA32(r, g, b, a) ((color_t){ (uint8_t)(r), (uint8_t)(g), (uint8_t)(b), (uint8_t)(a) })
 
 // ---- sprite_t: only ever used as an opaque pointer in headers/compiled
 // .c files here, never dereferenced — an incomplete type is enough. ----

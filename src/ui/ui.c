@@ -92,8 +92,10 @@ void ui_draw_build_panel(const GameState* game) {
     // Bottom bar
     ui_fill(0, SCREEN_HEIGHT - PANEL_H, SCREEN_WIDTH, PANEL_H, RGBA32(10, 10, 25, 220));
 
-    // Draw one button per unit type (not hero, too expensive for early game)
-    int n_types = UNIT_TYPE_COUNT - 1; // exclude hero from quick-build
+    // Draw one button per playable unit type (not hero, too expensive for
+    // early game — and never the enemy-only elite variants, which aren't
+    // placeable at all, see PLAYABLE_UNIT_TYPE_COUNT).
+    int n_types = PLAYABLE_UNIT_TYPE_COUNT - 1; // exclude hero from quick-build
     int btn_w  = (SCREEN_WIDTH - 20) / n_types - 4;
     int btn_h  = PANEL_H - 8;
     int btn_y  = SCREEN_HEIGHT - PANEL_H + 4;
@@ -147,7 +149,7 @@ void ui_draw_build_panel(const GameState* game) {
 
 void ui_draw_unit_tooltip(const GameState* game) {
     if (game->selected_unit_type < 0 ||
-        game->selected_unit_type >= UNIT_TYPE_COUNT) return;
+        game->selected_unit_type >= PLAYABLE_UNIT_TYPE_COUNT) return;
 
     const UnitStats* s = unit_get_stats(game->player_faction,
                                         (UnitType)game->selected_unit_type);

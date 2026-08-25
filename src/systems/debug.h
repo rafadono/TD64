@@ -51,10 +51,18 @@ struct GameState;
 // Initialize debug system
 void sys_debug_init(void);
 
-// Handle debug input (C buttons)
+// Handle debug input: C-up opens/closes the debug menu (D-pad selects,
+// A toggles, B also closes) — this is the ONLY debug input, replacing the
+// old scattered C-down/C-left/C-right toggles and the L+R+C-* cheat combos.
+// While the menu is open, the caller (core/main.c) should skip normal
+// gameplay input (cursor/placement/etc) so D-pad/A aren't double-purposed.
 void debug_handle_input(void);
 
-// Render debug overlay
+// True while the debug menu is open (see debug_handle_input).
+bool debug_menu_is_open(void);
+
+// Render debug overlay (the per-flag overlays, e.g. FPS counter/grid/etc,
+// plus the menu itself when open)
 void sys_debug_render(const struct GameState* game);
 
 // Update performance counters

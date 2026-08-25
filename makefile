@@ -39,14 +39,16 @@ SYSTEM_SOURCES = \
 	src/systems/debug.c \
 	src/systems/audio.c \
 	src/systems/save.c \
-	src/systems/lang.c
+	src/systems/lang.c \
+	src/systems/controls.c
 
 # UI
 UI_SOURCES = \
 	src/ui/menu.c \
 	src/ui/ui.c \
 	src/ui/map_editor.c \
-	src/ui/custom_map_menu.c
+	src/ui/custom_map_menu.c \
+	src/ui/controls_menu.c
 
 # Resources
 RESOURCE_SOURCES = src/resources/resources.c
@@ -185,13 +187,12 @@ help:
 	@echo "    src/config/game_config.h   — Master balance file"
 	@echo "    src/config/units_data.c    — All unit stats"
 	@echo ""
-	@echo "  CONTROLS:"
-	@echo "    D-pad      Move cursor      |  C-up      Toggle FPS"
-	@echo "    A          Place unit       |  C-down    Toggle grid"
-	@echo "    B          Cancel           |  C-left    Toggle AI debug"
-	@echo "    L/R        Cycle unit       |  C-right   Toggle perf"
-	@echo "    Z          Next wave        |  L+R+C-*   Cheats"
-	@echo "    Start      Pause            |"
+	@echo "  CONTROLS (defaults — remappable from the main menu's CONTROLS screen):"
+	@echo "    D-pad      Move cursor / auto-scroll camera on bigger maps"
+	@echo "    A          Place unit       |  C-right   Upgrade tower"
+	@echo "    B          Cancel           |  C-up      Debug menu"
+	@echo "    L/R        Cycle unit       |  Z         Next wave"
+	@echo "    Start      Pause"
 	@echo ""
 	@echo "  For detailed docs, see README.md"
 	@echo ""

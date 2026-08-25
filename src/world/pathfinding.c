@@ -26,6 +26,13 @@ static Waypoint pf_offscreen_extension(int gx, int gy, float wx, float wy) {
     return (Waypoint){ SCREEN_WIDTH + 20, wy };
 }
 
+void path_scale(Path* p, float sx, float sy) {
+    for (int i = 0; i < p->count; i++) {
+        p->points[i].x *= sx;
+        p->points[i].y *= sy;
+    }
+}
+
 bool path_init_from_terrain(Path* p, const TerrainMap* map) {
     // Find the first PATH cell touching a grid edge, scanning top row, then
     // bottom row, then left column, then right column.

@@ -30,14 +30,14 @@ static surface_t terrain_surface;
 static bool      terrain_surface_ready = false;
 
 void terrain_init(TerrainMap* map, TerrainType fill) {
-    for (int y = 0; y < SCREEN_HEIGHT/TERRAIN_GRID_SIZE; y++)
-        for (int x = 0; x < SCREEN_WIDTH/TERRAIN_GRID_SIZE; x++)
+    for (int y = 0; y < WORLD_HEIGHT/TERRAIN_GRID_SIZE; y++)
+        for (int x = 0; x < WORLD_WIDTH/TERRAIN_GRID_SIZE; x++)
             map->grid[x][y] = fill;
 }
 
 void terrain_set(TerrainMap* map, int gx, int gy, TerrainType t) {
-    if (gx < 0 || gx >= SCREEN_WIDTH/TERRAIN_GRID_SIZE) return;
-    if (gy < 0 || gy >= SCREEN_HEIGHT/TERRAIN_GRID_SIZE) return;
+    if (gx < 0 || gx >= WORLD_WIDTH/TERRAIN_GRID_SIZE) return;
+    if (gy < 0 || gy >= WORLD_HEIGHT/TERRAIN_GRID_SIZE) return;
     map->grid[gx][gy] = t;
 }
 
@@ -47,8 +47,8 @@ TerrainType terrain_get(const TerrainMap* map, float wx, float wy) {
     // than division for negative values, so it's safe to use here.
     int gx = ((int)wx) >> 4;
     int gy = ((int)wy) >> 4;
-    if (gx < 0 || gx >= SCREEN_WIDTH/TERRAIN_GRID_SIZE) return TERRAIN_GRASS;
-    if (gy < 0 || gy >= SCREEN_HEIGHT/TERRAIN_GRID_SIZE) return TERRAIN_GRASS;
+    if (gx < 0 || gx >= WORLD_WIDTH/TERRAIN_GRID_SIZE) return TERRAIN_GRASS;
+    if (gy < 0 || gy >= WORLD_HEIGHT/TERRAIN_GRID_SIZE) return TERRAIN_GRASS;
     return map->grid[gx][gy];
 }
 
@@ -57,18 +57,23 @@ TerrainModifier terrain_get_modifier(TerrainType t) {
     return MODIFIERS[TERRAIN_GRASS];
 }
 
-void terrain_compose(const TerrainMap* map) {
+void terrain_compose(const TerrainMap* map, int width, int height) {
     if (!terrain_surface_ready) {
-        terrain_surface = surface_alloc(FMT_RGBA16, SCREEN_WIDTH, SCREEN_HEIGHT);
+        // Always allocated at the maximum (WORLD) size, reused for every
+        // map regardless of its actual width/height — one persistent
+        // ~600KB buffer is simpler than tracking two different surface
+        // sizes, and comfortably fits without the Expansion Pak.
+        terrain_surface = surface_alloc(FMT_RGBA16, WORLD_WIDTH, WORLD_HEIGHT);
         terrain_surface_ready = true;
     }
 
-    int gw = SCREEN_WIDTH  / TERRAIN_GRID_SIZE;
-    int gh = SCREEN_HEIGHT / TERRAIN_GRID_SIZE;
+    int gw = width  / TERRAIN_GRID_SIZE;
+    int gh = height / TERRAIN_GRID_SIZE;
 
-    // This blit of up to 300 cells runs ONCE (on map load, or when the
-    // editor saves an edit), never per frame — so there's no need to batch
-    // by color/run the way the rest of the renderer does.
+    // This blit of at most WORLD_WIDTH/16 * WORLD_HEIGHT/16 cells runs ONCE
+    // (on map load, or when the editor saves an edit), never per frame — so
+    // there's no need to batch by color/run the way the rest of the
+    // renderer does.
     rdpq_attach(&terrain_surface, NULL);
     rdpq_set_mode_standard();
     rdpq_mode_combiner(RDPQ_COMBINER_TEX);
@@ -90,11 +95,16 @@ void terrain_compose(const TerrainMap* map) {
     rdpq_detach();
 }
 
-void terrain_render(const TerrainMap* map) {
-    (void)map; // the visible content is already composed into terrain_surface
+void terrain_render(int cam_x, int cam_y) {
     if (!terrain_surface_ready) return;
     rdpq_mode_combiner(RDPQ_COMBINER_TEX);
-    rdpq_tex_blit(&terrain_surface, 0, 0, NULL);
+    // Crops a SCREEN-sized window out of the (possibly bigger) composed
+    // surface, starting at the camera's current world position — the same
+    // sub-rect blit mechanism already used for animated sprite sheets
+    // (rdpq_blitparms_t.s0/t0), just with both axes used instead of one.
+    rdpq_tex_blit(&terrain_surface, 0, 0, &(rdpq_blitparms_t){
+        .s0 = cam_x, .t0 = cam_y, .width = SCREEN_WIDTH, .height = SCREEN_HEIGHT
+    });
 }
 
 void terrain_apply_to_entity(Entity* e, const TerrainMap* map) {

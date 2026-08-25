@@ -100,7 +100,7 @@ void map_editor_enter(int slot) {
         editing_name[0]     = '\0';
         terrain_init(&editing_terrain, TERRAIN_GRASS);
     }
-    terrain_compose(&editing_terrain);
+    terrain_compose(&editing_terrain, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
 static void editing_to_save(CustomMapSave* out) {
@@ -184,7 +184,7 @@ void map_editor_handle_input(GameState* game) {
     joypad_buttons_t held = joypad_get_buttons_held(JOYPAD_PORT_1);
     if (held.l && held.r && kd.b) {
         terrain_init(&editing_terrain, TERRAIN_GRASS);
-        terrain_compose(&editing_terrain);
+        terrain_compose(&editing_terrain, SCREEN_WIDTH, SCREEN_HEIGHT);
         return;
     }
 
@@ -202,7 +202,7 @@ void map_editor_handle_input(GameState* game) {
 
     if (kd.a) {
         terrain_set(&editing_terrain, cursor_gx, cursor_gy, (TerrainType)brush_type);
-        terrain_compose(&editing_terrain);
+        terrain_compose(&editing_terrain, SCREEN_WIDTH, SCREEN_HEIGHT);
     }
 
     if (kd.c_left) { naming_mode = true; kb_cursor = 0; }
@@ -266,7 +266,7 @@ void map_editor_render(const GameState* game) {
 
     if (naming_mode) { render_naming(); return; }
 
-    terrain_render(&editing_terrain);
+    terrain_render(0, 0); // the editor never scrolls — always shows the map from its origin
 
     // Cursor: highlighted cell
     me_fill(cursor_gx*TERRAIN_GRID_SIZE, cursor_gy*TERRAIN_GRID_SIZE,
@@ -294,7 +294,8 @@ void map_editor_render(const GameState* game) {
     } else {
         snprintf(slot_buf, sizeof(slot_buf), "*:%s", display_name);
     }
-    rdpq_text_printf(NULL, 1, 195, 11, "%s", slot_buf);
+    // Right-anchored: 125px margin from the right edge at design resolution
+    rdpq_text_printf(NULL, 1, SCREEN_WIDTH - 125, 11, "%s", slot_buf);
 
     // Bottom bar: pak status + controls
     me_fill(0, SCREEN_HEIGHT-24, SCREEN_WIDTH, 24, RGBA32(10, 10, 25, 220));

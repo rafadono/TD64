@@ -2,6 +2,8 @@
 #define SAVE_H
 #include <stdbool.h>
 #include <stdint.h>
+#include "../world/terrain.h"
+#include "controls.h"
 
 // =============================================================================
 // SAVE — persistence on the N64 Controller Pak (memory pak)
@@ -12,12 +14,14 @@
 // =============================================================================
 
 #define SAVE_MAP_SLOTS   8
-#define SAVE_GRID_W      20   // must match SCREEN_WIDTH/TERRAIN_GRID_SIZE
-#define SAVE_GRID_H      15   // must match SCREEN_HEIGHT/TERRAIN_GRID_SIZE
+// Derived from screen.h + TERRAIN_GRID_SIZE (terrain.h) instead of separately
+// hardcoded numbers that had to be kept in sync by convention — changing the
+// game's resolution automatically resizes what gets saved, no risk of drift.
+#define SAVE_GRID_W      (SCREEN_WIDTH  / TERRAIN_GRID_SIZE)
+#define SAVE_GRID_H      (SCREEN_HEIGHT / TERRAIN_GRID_SIZE)
 
 // Serialized format of a custom map (what gets saved to the Controller Pak).
-// grid[] uses the same values as TerrainType (terrain.h), declared as
-// uint8_t here so this module doesn't need to depend on terrain.h.
+// grid[] uses the same values as TerrainType (terrain.h).
 #define SAVE_NAME_LEN 12  // 11 usable chars + null terminator
 
 typedef struct {
@@ -38,6 +42,15 @@ typedef struct {
     uint32_t best_score[4];
     uint8_t  campaigns_completed; // bitmask, bit N = campaign N completed at least once
 } GameProgress;
+
+// Remapped button bindings (see systems/controls.h). `bindings[action]` is
+// a PhysicalButton value; `valid` is 0 for a note that was never actually
+// saved (e.g. a freshly formatted pak), so controls_init() knows to keep
+// the compiled-in defaults instead of trusting an all-zero note.
+typedef struct {
+    uint8_t bindings[ACTION_COUNT];
+    uint8_t valid;
+} InputConfig;
 
 typedef enum {
     SAVE_STATUS_UNKNOWN = 0,
@@ -68,5 +81,9 @@ bool save_delete_custom_map(int slot);
 // Game progress
 bool save_read_progress(GameProgress* out);
 bool save_write_progress(const GameProgress* progress);
+
+// Remapped button bindings
+bool save_read_input_config(InputConfig* out);
+bool save_write_input_config(const InputConfig* cfg);
 
 #endif // SAVE_H

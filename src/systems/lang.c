@@ -9,6 +9,7 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
     [STR_TITLE_MAIN]              = { "FACTION WARS TOWER DEFENSE", "FACTION WARS TOWER DEFENSE" },
     [STR_MENU_PLAY_CAMPAIGN]      = { "PLAY CAMPAIGN",              "JUGAR CAMPANA" },
     [STR_MENU_CUSTOM_MAPS]        = { "CUSTOM MAPS",                "MAPAS CUSTOM" },
+    [STR_MENU_CONTROLS]           = { "CONTROLS",                   "CONTROLES" },
     [STR_MENU_CREDITS]            = { "CREDITS",                    "CREDITOS" },
     [STR_MENU_LANGUAGE]           = { "LANGUAGE",                   "IDIOMA" },
     [STR_HINT_MAIN_MENU]          = { "D-PAD: MOVE  A: CONFIRM",    "D-PAD: MOVER  A: CONFIRMAR" },
@@ -106,6 +107,21 @@ static const char* STRINGS[STR_COUNT][LANG_COUNT] = {
                                        "Salvajes. Maximo dano, minima defensa." },
     [STR_FACTION_DESC_VEILSTORM]  = { "Arcane mages. Maximum range, very fragile.",
                                        "Magos arcanos. Alcance maximo, muy fragiles." },
+
+    [STR_CONTROLS_TITLE]         = { "CONTROLS",                    "CONTROLES" },
+    [STR_CONTROLS_HINT]          = {
+        "D-PAD SELECT  A REBIND  Z RESET  START SAVE  B BACK",
+        "D-PAD SELECCIONAR  A REASIGNAR  Z RESETEAR  START GUARDAR  B VOLVER"
+    },
+    [STR_CONTROLS_WAITING]       = { "PRESS A BUTTON... (B CANCELS)", "PRESIONA UN BOTON... (B CANCELA)" },
+    [STR_CONTROLS_SAVED]         = { "SAVED TO CONTROLLER PAK",      "GUARDADO EN CONTROLLER PAK" },
+    [STR_ACTION_PLACE]           = { "PLACE UNIT",                  "COLOCAR UNIDAD" },
+    [STR_ACTION_CANCEL]          = { "CANCEL",                      "CANCELAR" },
+    [STR_ACTION_PREV_UNIT]       = { "PREV UNIT",                   "UNIDAD ANTERIOR" },
+    [STR_ACTION_NEXT_UNIT]       = { "NEXT UNIT",                   "UNIDAD SIGUIENTE" },
+    [STR_ACTION_UPGRADE]         = { "UPGRADE TOWER",                "MEJORAR TORRE" },
+    [STR_ACTION_SPAWN_WAVE]      = { "SPAWN WAVE",                  "LANZAR OLEADA" },
+    [STR_ACTION_PAUSE]           = { "PAUSE",                       "PAUSA" },
 };
 
 static Language current_lang = LANG_DEFAULT;

@@ -238,7 +238,14 @@ static void entity_deal_damage(Entity* attacker, Entity* target, int damage, Gam
 
     char txt[16];
     snprintf(txt, sizeof(txt), "-%d", damage);
-    floating_text_spawn(txt, target->x, target->y - 10, RGBA32(255, 80, 80, 255));
+    {
+        // Floating text is stored/rendered in screen-space (unlike
+        // particles, it doesn't go through the camera again at render
+        // time), so world-anchored text converts once here at spawn time.
+        float ftx = target->x, fty = target->y - 10;
+        camera_apply(&game->camera, &ftx, &fty);
+        floating_text_spawn(txt, ftx, fty, RGBA32(255, 80, 80, 255));
+    }
 
     if (target->hp <= 0) {
         // Death
@@ -254,8 +261,11 @@ static void entity_deal_damage(Entity* attacker, Entity* target, int damage, Gam
 
         char gold_txt[16];
         snprintf(gold_txt, sizeof(gold_txt), "+%d", target->gold_reward);
-        floating_text_spawn(gold_txt, target->x, target->y,
-                            RGBA32(255, 215, 0, 255));
+        {
+            float gtx = target->x, gty = target->y;
+            camera_apply(&game->camera, &gtx, &gty);
+            floating_text_spawn(gold_txt, gtx, gty, RGBA32(255, 215, 0, 255));
+        }
 
         // Audio trigger for kill!
         audio_play_sfx("coin");
@@ -323,9 +333,13 @@ void entities_update(float dt, GameState* game) {
             e->x += e->vx * dt;
             e->y += e->vy * dt;
 
-            // Off-screen cull
-            if (e->x < -20 || e->x > SCREEN_WIDTH + 20 ||
-                e->y < -20 || e->y > SCREEN_HEIGHT + 20) {
+            // Off-map cull: bounded by the actual map's world size (not the
+            // screen) — with a scrollable map, a projectile can be well
+            // within the playable world while outside the CURRENT viewport,
+            // and shouldn't be culled just because the camera has scrolled
+            // away from it.
+            if (e->x < -20 || e->x > game->map.width + 20 ||
+                e->y < -20 || e->y > game->map.height + 20) {
                 e->active = false;
             }
             continue;
@@ -427,7 +441,11 @@ void entities_update(float dt, GameState* game) {
                 e->ability_ready = false;
                 e->ability_timer = s->ability_cooldown;
 
-                floating_text_spawn(s->ability_name, e->x, e->y - 12, RGBA32(255, 215, 0, 255));
+                {
+                    float atx = e->x, aty = e->y - 12;
+                    camera_apply(&game->camera, &atx, &aty);
+                    floating_text_spawn(s->ability_name, atx, aty, RGBA32(255, 215, 0, 255));
+                }
                 particles_emit_explosion(e->x + e->w/2, e->y + e->h/2, s->color_secondary, 8);
                 audio_play_sfx("levelup");
 

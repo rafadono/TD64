@@ -6,6 +6,11 @@
 typedef struct {
     char name[32];
     int difficulty, starting_gold, starting_lives;
+    // Actual play-area size in pixels for THIS map: WORLD_WIDTH/HEIGHT for
+    // the 4 fixed campaign maps, SCREEN_WIDTH/HEIGHT for custom maps. Used
+    // to clamp the camera's scroll range and to compose/cull only the
+    // valid portion of `terrain` (which is always allocated WORLD-sized).
+    int width, height;
     Path runner_path;
     TerrainMap terrain;
 } MapData;

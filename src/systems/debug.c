@@ -37,65 +37,71 @@ void sys_debug_init(void) {
     debug.dps_total        = 0;
 }
 
+// =============================================================================
+// DEBUG MENU
+//
+// Every visual overlay AND every cheat lives in one navigable list, opened
+// with a single button (C-up) instead of the old scheme of 4 separate
+// C-button toggles plus 4 hidden L+R+C-* cheat combos. That old scheme had
+// a real bug (C-right doubled as both "toggle performance overlay" and
+// "upgrade the selected tower" — both fired on the same press) and it used
+// up every C-button + the whole L+R+C-* combo space, leaving nothing free
+// for anything else (see the ergonomics discussion that led to this).
+// =============================================================================
+typedef struct { const char* label; bool* flag; } DebugMenuEntry;
+
+static bool debug_menu_open = false;
+static int  debug_menu_sel  = 0;
+
+static DebugMenuEntry DEBUG_MENU_ENTRIES[] = {
+    // Visual overlays
+    { "FPS Counter",        &debug.show_fps },
+    { "Entity Count",       &debug.show_entity_count },
+    { "Memory Stats",       &debug.show_memory },
+    { "Collision Boxes",    &debug.show_collision },
+    { "Range Circles",      &debug.show_ranges },
+    { "Pathfinding",        &debug.show_pathfinding },
+    { "Wave Preview",       &debug.show_wave_preview },
+    { "Economy Info",       &debug.show_economy },
+    { "AI Targeting Lines", &debug.show_ai_lines },
+    { "Performance Timers", &debug.show_performance },
+    { "Grid Overlay",       &debug.show_grid },
+    { "Damage Numbers",     &debug.show_damage_numbers },
+    // Cheats
+    { "Godmode",            &debug.godmode },
+    { "Infinite Gold",      &debug.infinite_gold },
+    { "Instant Waves",      &debug.instant_waves },
+    { "Slow Motion",        &debug.slow_motion },
+    { "Fast Forward",       &debug.fast_forward },
+    { "One-Hit Kills",      &debug.one_hit_kills },
+};
+#define DEBUG_MENU_COUNT ((int)(sizeof(DEBUG_MENU_ENTRIES) / sizeof(DEBUG_MENU_ENTRIES[0])))
+
+bool debug_menu_is_open(void) { return debug_menu_open; }
+
 void debug_handle_input(void) {
     joypad_buttons_t keys = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
-    // C-up: Toggle FPS + entity count + memory
     if (keys.c_up) {
-        debug.show_fps = !debug.show_fps;
-        debug.show_entity_count = debug.show_fps;
-        debug.show_memory = debug.show_fps;
-        debugf("Debug overlay: %s\n", debug.show_fps ? "ON" : "OFF");
+        debug_menu_open = !debug_menu_open;
+        debug_menu_sel  = 0;
+        return; // don't also read D-pad/A/B below on the same press that opened/closed it
+    }
+    if (!debug_menu_open) return;
+
+    if (keys.d_up)   { debug_menu_sel--; if (debug_menu_sel < 0) debug_menu_sel = DEBUG_MENU_COUNT - 1; }
+    if (keys.d_down) { debug_menu_sel++; if (debug_menu_sel >= DEBUG_MENU_COUNT) debug_menu_sel = 0; }
+
+    if (keys.a) {
+        bool* flag = DEBUG_MENU_ENTRIES[debug_menu_sel].flag;
+        *flag = !*flag;
+        // Fast forward and slow motion are mutually exclusive (same as the
+        // old L+R+C-right cheat used to enforce).
+        if (flag == &debug.fast_forward && debug.fast_forward) debug.slow_motion = false;
+        if (flag == &debug.slow_motion  && debug.slow_motion)  debug.fast_forward = false;
     }
 
-    // C-down: Toggle grid + collision + ranges
-    if (keys.c_down) {
-        debug.show_grid = !debug.show_grid;
-        debug.show_collision = debug.show_grid;
-        debug.show_ranges = debug.show_grid;
-        debugf("Visual debug: %s\n", debug.show_grid ? "ON" : "OFF");
-    }
-
-    // C-left: Toggle AI + pathfinding + wave preview
-    if (keys.c_left) {
-        debug.show_ai_lines = !debug.show_ai_lines;
-        debug.show_pathfinding = debug.show_ai_lines;
-        debug.show_wave_preview = debug.show_ai_lines;
-        debugf("AI debug: %s\n", debug.show_ai_lines ? "ON" : "OFF");
-    }
-
-    // C-right: Toggle performance + economy
-    if (keys.c_right) {
-        debug.show_performance = !debug.show_performance;
-        debug.show_economy = debug.show_performance;
-        debugf("Performance debug: %s\n", debug.show_performance ? "ON" : "OFF");
-    }
-
-    // Cheats (hold L + R + C-button)
-    // L/R must be read as "held" (joypad_get_buttons_held), not as an edge
-    // (joypad_get_buttons_pressed): requiring L, R and the C button to all
-    // transition on the SAME 1/60s frame is practically impossible to
-    // achieve with a physical controller.
-    joypad_buttons_t held = joypad_get_buttons_held(JOYPAD_PORT_1);
-    if (held.l && held.r) {
-        if (keys.c_up) {
-            debug.godmode = !debug.godmode;
-            debugf("Godmode: %s\n", debug.godmode ? "ON" : "OFF");
-        }
-        if (keys.c_down) {
-            debug.infinite_gold = !debug.infinite_gold;
-            debugf("Infinite gold: %s\n", debug.infinite_gold ? "ON" : "OFF");
-        }
-        if (keys.c_left) {
-            debug.one_hit_kills = !debug.one_hit_kills;
-            debugf("One-hit kills: %s\n", debug.one_hit_kills ? "ON" : "OFF");
-        }
-        if (keys.c_right) {
-            debug.fast_forward = !debug.fast_forward;
-            if (debug.fast_forward) debug.slow_motion = false;
-            debugf("Fast forward: %s\n", debug.fast_forward ? "ON" : "OFF");
-        }
-    }
+    if (keys.b) debug_menu_open = false;
 }
 
 void debug_update_perf(float dt, int entities, int particles) {
@@ -260,6 +266,41 @@ void sys_debug_render(const GameState* game) {
         rdpq_set_prim_color(RGBA32(255, 255, 100, 255));
         rdpq_fill_rectangle(SCREEN_WIDTH - 58, SCREEN_HEIGHT - 14,
                             SCREEN_WIDTH - 6,  SCREEN_HEIGHT - 6);
+    }
+
+    // ── Debug Menu ────────────────────────────────────────────────────────
+    // Drawn last so it sits on top of every other overlay.
+    if (debug_menu_open) {
+        rdpq_mode_combiner(RDPQ_COMBINER_FLAT);
+        rdpq_set_prim_color(RGBA32(10, 10, 20, 235));
+        rdpq_fill_rectangle(SCREEN_WIDTH/2 - 90, 10, SCREEN_WIDTH/2 + 90, SCREEN_HEIGHT - 10);
+
+        rdpq_set_prim_color(RGBA32(60, 60, 120, 255));
+        rdpq_fill_rectangle(SCREEN_WIDTH/2 - 90, 10, SCREEN_WIDTH/2 + 90, 22);
+        rdpq_text_printf(NULL, 1, SCREEN_WIDTH/2 - 82, 20, "DEBUG MENU");
+
+        int row_h = (SCREEN_HEIGHT - 34) / DEBUG_MENU_COUNT;
+        if (row_h > 11) row_h = 11; // don't let rows get taller than needed on a bigger screen
+        int start_y = 24;
+        for (int i = 0; i < DEBUG_MENU_COUNT; i++) {
+            int ry = start_y + i * row_h;
+            bool sel = (i == debug_menu_sel);
+            bool on  = *DEBUG_MENU_ENTRIES[i].flag;
+
+            if (sel) {
+                rdpq_set_prim_color(RGBA32(50, 50, 100, 255));
+                rdpq_fill_rectangle(SCREEN_WIDTH/2 - 88, ry, SCREEN_WIDTH/2 + 88, ry + row_h - 1);
+            }
+            rdpq_set_prim_color(on ? RGBA32(100, 255, 130, 255) : RGBA32(120, 120, 130, 255));
+            rdpq_text_printf(NULL, 1, SCREEN_WIDTH/2 - 84, ry + row_h - 2, "[%s]", on ? "X" : " ");
+            rdpq_set_prim_color(RGBA32(230, 230, 230, 255));
+            rdpq_text_printf(NULL, 1, SCREEN_WIDTH/2 - 68, ry + row_h - 2, "%s",
+                              DEBUG_MENU_ENTRIES[i].label);
+        }
+
+        rdpq_set_prim_color(RGBA32(180, 180, 200, 255));
+        rdpq_text_printf(NULL, 1, SCREEN_WIDTH/2 - 82, SCREEN_HEIGHT - 14,
+                          "D-PAD SELECT  A TOGGLE  B/C-UP CLOSE");
     }
 }
 

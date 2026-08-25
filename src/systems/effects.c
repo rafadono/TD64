@@ -10,18 +10,19 @@
 // =============================================================================
 
 void camera_init(Camera* cam) {
-    cam->offset_x = cam->offset_y = 0;
+    cam->scroll_x = cam->scroll_y = 0;
+    cam->shake_x = cam->shake_y = 0;
     cam->shake_intensity = cam->shake_duration = 0;
 }
 
 void camera_update(Camera* cam, float dt) {
-    if (cam->shake_duration <= 0) { cam->offset_x = cam->offset_y = 0; return; }
-    cam->offset_x = ((rand() % 200) - 100) / 100.0f * cam->shake_intensity;
-    cam->offset_y = ((rand() % 200) - 100) / 100.0f * cam->shake_intensity;
+    if (cam->shake_duration <= 0) { cam->shake_x = cam->shake_y = 0; return; }
+    cam->shake_x = ((rand() % 200) - 100) / 100.0f * cam->shake_intensity;
+    cam->shake_y = ((rand() % 200) - 100) / 100.0f * cam->shake_intensity;
     cam->shake_duration  -= dt;
     cam->shake_intensity *= 0.88f;
     if (cam->shake_duration <= 0) {
-        cam->offset_x = cam->offset_y = 0;
+        cam->shake_x = cam->shake_y = 0;
         cam->shake_intensity = 0;
     }
 }
@@ -34,9 +35,37 @@ void camera_shake(Camera* cam, float intensity, float duration) {
     }
 }
 
+void camera_ensure_visible(Camera* cam, float world_x, float world_y,
+                            float margin_left, float margin_right,
+                            float margin_top, float margin_bottom,
+                            float map_w, float map_h) {
+    // Valid scroll range that keeps world_x within
+    // [scroll_x+margin_left, scroll_x+SCREEN_WIDTH-margin_right]; only
+    // moves scroll_x if it's currently outside that range.
+    float min_x = world_x - SCREEN_WIDTH + margin_right;
+    float max_x = world_x - margin_left;
+    if (cam->scroll_x < min_x) cam->scroll_x = min_x;
+    if (cam->scroll_x > max_x) cam->scroll_x = max_x;
+
+    float min_y = world_y - SCREEN_HEIGHT + margin_bottom;
+    float max_y = world_y - margin_top;
+    if (cam->scroll_y < min_y) cam->scroll_y = min_y;
+    if (cam->scroll_y > max_y) cam->scroll_y = max_y;
+
+    // Re-clamp to the map's actual bounds — handles a map no bigger than
+    // one screen (scroll must stay at (0,0) regardless of the above), and
+    // prevents scrolling past the far edge of a bigger map.
+    float max_scroll_x = map_w - SCREEN_WIDTH;  if (max_scroll_x < 0) max_scroll_x = 0;
+    float max_scroll_y = map_h - SCREEN_HEIGHT; if (max_scroll_y < 0) max_scroll_y = 0;
+    if (cam->scroll_x < 0) cam->scroll_x = 0;
+    if (cam->scroll_x > max_scroll_x) cam->scroll_x = max_scroll_x;
+    if (cam->scroll_y < 0) cam->scroll_y = 0;
+    if (cam->scroll_y > max_scroll_y) cam->scroll_y = max_scroll_y;
+}
+
 void camera_apply(const Camera* cam, float* x, float* y) {
-    *x += cam->offset_x;
-    *y += cam->offset_y;
+    *x = *x - cam->scroll_x + cam->shake_x;
+    *y = *y - cam->scroll_y + cam->shake_y;
 }
 
 // =============================================================================
@@ -99,7 +128,7 @@ void particles_update(float dt) {
     }
 }
 
-void particles_render(void) {
+void particles_render(const Camera* cam) {
     rdpq_set_mode_standard();
     rdpq_mode_combiner(RDPQ_COMBINER_FLAT);
     rdpq_mode_blender(RDPQ_BLENDER_ADDITIVE);
@@ -109,7 +138,9 @@ void particles_render(void) {
         color_t c = p->color; c.a=(uint8_t)(255*alpha);
         rdpq_set_prim_color(c);
         float hs=p->size/2;
-        rdpq_fill_rectangle(p->x-hs,p->y-hs,p->x+hs,p->y+hs);
+        float rx = p->x, ry = p->y;
+        camera_apply(cam, &rx, &ry);
+        rdpq_fill_rectangle(rx-hs,ry-hs,rx+hs,ry+hs);
     }
 }
 

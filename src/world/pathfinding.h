@@ -17,5 +17,10 @@ void path_init_spiral(Path* p);
 // corridor from one grid edge to another; the caller should fall back to a
 // fixed path type in that case.
 bool path_init_from_terrain(Path* p, const TerrainMap* map);
+// Scales every waypoint by (sx, sy) in place — used to stretch the fixed
+// 320x240-tuned preset shapes above proportionally onto a bigger world
+// (e.g. sx=sy=2.0 to span WORLD_WIDTH x WORLD_HEIGHT instead of just one
+// screen) without redesigning each shape by hand.
+void path_scale(Path* p, float sx, float sy);
 void path_follow(struct Entity* e, const Path* path, float dt);
 #endif

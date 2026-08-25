@@ -68,8 +68,10 @@ void ui_draw_hud(const GameState* game) {
     // Faction colors on HUD
     const Campaign* c = campaign_get(game->campaign_id);
     if (c) {
-        // Player faction strip
-        ui_fill(202, 2, 28, HUD_H-4, RGBA32(
+        // Player faction strip (anchored 20px before the wave indicator box,
+        // which itself is right-anchored via SCREEN_WIDTH-70 - so this stays
+        // correctly positioned relative to it at any SCREEN_WIDTH)
+        ui_fill(SCREEN_WIDTH - 118, 2, 28, HUD_H-4, RGBA32(
             c->player_faction == FACTION_DAWNGUARD ? 60  : (c->player_faction == FACTION_IRONBONE ? 110 : (c->player_faction == FACTION_ASHCLAW ? 200 : 40)),
             c->player_faction == FACTION_DAWNGUARD ? 110 : (c->player_faction == FACTION_IRONBONE ? 30  : (c->player_faction == FACTION_ASHCLAW ? 55  : 190)),
             c->player_faction == FACTION_DAWNGUARD ? 210 : (c->player_faction == FACTION_IRONBONE ? 150 : (c->player_faction == FACTION_ASHCLAW ? 30  : 220)),

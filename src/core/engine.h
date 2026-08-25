@@ -4,6 +4,8 @@
 #include <libdragon.h>
 #include <stdbool.h>
 
+#include "screen.h"
+
 // Include all subsystem headers
 #include "../config/factions.h"
 #include "../config/units_data.h"
@@ -19,12 +21,6 @@
 #include "../systems/debug.h"
 #include "../systems/save.h"
 #include "../systems/lang.h"
-
-// =============================================================================
-// SCREEN
-// =============================================================================
-#define SCREEN_WIDTH  320
-#define SCREEN_HEIGHT 240
 
 // =============================================================================
 // ENTITY LIMITS
@@ -51,7 +47,8 @@ typedef enum {
     STATE_GAME_OVER,
     STATE_VICTORY,
     STATE_CUSTOM_MAP_MENU,
-    STATE_MAP_EDITOR
+    STATE_MAP_EDITOR,
+    STATE_CONTROLS_MENU
 } GameFlowState;
 
 // =============================================================================

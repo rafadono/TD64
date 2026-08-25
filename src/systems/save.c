@@ -22,6 +22,7 @@ static const char* MAP_SLOT_NAMES[SAVE_MAP_SLOTS] = {
     "TD MAP E", "TD MAP F", "TD MAP G", "TD MAP H",
 };
 #define PROGRESS_NAME "TD SAVE"
+#define INPUT_CONFIG_NAME "TD CTRLS"
 
 // Scratch buffer for reading/writing notes. CustomMapSave (~305B) needs 2
 // blocks (512B); left some headroom so a small format growth later doesn't
@@ -167,4 +168,14 @@ bool save_read_progress(GameProgress* out) {
 bool save_write_progress(const GameProgress* progress) {
     if (!progress) return false;
     return write_note(PROGRESS_NAME, progress, sizeof(GameProgress));
+}
+
+bool save_read_input_config(InputConfig* out) {
+    if (!out) return false;
+    return read_note(INPUT_CONFIG_NAME, out, sizeof(InputConfig));
+}
+
+bool save_write_input_config(const InputConfig* cfg) {
+    if (!cfg) return false;
+    return write_note(INPUT_CONFIG_NAME, cfg, sizeof(InputConfig));
 }

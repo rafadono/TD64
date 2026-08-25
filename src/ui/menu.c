@@ -1,6 +1,7 @@
 #include "menu.h"
 #include "../core/engine.h"
 #include "custom_map_menu.h"
+#include "controls_menu.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -33,7 +34,7 @@ static int   main_sel  = 0;
 static int   diff_sel  = GAME_DIFF_NORMAL; // highlighted option in difficulty select
 static float pulse     = 0.0f; // 0..1 loop for animations
 
-#define MAIN_MENU_OPTION_COUNT 4 // Play Campaign / Custom Maps / Language / Credits
+#define MAIN_MENU_OPTION_COUNT 5 // Play Campaign / Custom Maps / Controls / Language / Credits
 
 // =============================================================================
 // DRAWING PRIMITIVES
@@ -99,7 +100,10 @@ static float faction_stat_pct(FactionId f, int stat, float max_val) {
 // Layout: [accent| name ......  | rival badge ]
 
 #define CARD_X    10
-#define CARD_W   300
+#define CARD_W   (SCREEN_WIDTH - 2*CARD_X)  // stretches to fill the width; every
+                                             // offset inside draw_card_small/large
+                                             // is expressed relative to CARD_W, so
+                                             // they all scale automatically from this
 #define CARD_SM_H  26
 
 static void draw_card_small(int y, FactionId f) {
@@ -230,8 +234,8 @@ static void render_faction_select(void) {
     fill(0, 16, SCREEN_WIDTH, 2, PAL[fs_sel].primary);
     // Title
     rdpq_text_printf(NULL, 1, 10, 12, "%s", T(STR_FACTION_SELECT_TITLE));
-    // Subtitle
-    rdpq_text_printf(NULL, 1, 178, 12, "%s", T(STR_FACTION_SELECT_SUBTITLE));
+    // Subtitle (right-anchored: 142px margin from the right edge at design res)
+    rdpq_text_printf(NULL, 1, SCREEN_WIDTH - 142, 12, "%s", T(STR_FACTION_SELECT_SUBTITLE));
 
     // Faction cards
     int cur_y = 22; // start just below header
@@ -279,15 +283,15 @@ static void render_main_menu(void) {
           RGBA32(80,80,160,255));
     rdpq_text_printf(NULL, 1, 35, 42, "%s", T(STR_TITLE_MAIN));
 
-    // 4 options: Play Campaign / Custom Maps / Language / Credits
+    // 5 options: Play Campaign / Custom Maps / Controls / Language / Credits
     const color_t opt_col[MAIN_MENU_OPTION_COUNT] = {
         RGBA32(60,120,220,255), RGBA32(90,150,90,220),
-        RGBA32(150,120,60,220), RGBA32(70,70,80,200)
+        RGBA32(110,110,180,220), RGBA32(150,120,60,220), RGBA32(70,70,80,200)
     };
     char lang_label[32];
     snprintf(lang_label, sizeof(lang_label), "%s: %s", T(STR_MENU_LANGUAGE), lang_name(lang_get()));
     const char* labels[MAIN_MENU_OPTION_COUNT] = {
-        T(STR_MENU_PLAY_CAMPAIGN), T(STR_MENU_CUSTOM_MAPS), lang_label, T(STR_MENU_CREDITS)
+        T(STR_MENU_PLAY_CAMPAIGN), T(STR_MENU_CUSTOM_MAPS), T(STR_MENU_CONTROLS), lang_label, T(STR_MENU_CREDITS)
     };
     for (int i = 0; i < MAIN_MENU_OPTION_COUNT; i++) {
         bool sel = (i == main_sel);
@@ -363,8 +367,9 @@ static void render_paused(const GameState* game) {
     // Overlay
     fill(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, RGBA32(0,0,0,170));
 
-    // Dialog box
-    int dx = SCREEN_WIDTH/2-72, dw = 144, dy = 55, dh = 118;
+    // Dialog box (centered both ways: dy tuned to sit 65px above vertical
+    // center at design resolution, so it stays centered at any SCREEN_HEIGHT)
+    int dx = SCREEN_WIDTH/2-72, dw = 144, dy = SCREEN_HEIGHT/2 - 65, dh = 118;
     panel(dx, dy, dw, dh, RGBA32(15,15,38,245), RGBA32(90,90,180,255));
 
     // Header
@@ -435,11 +440,12 @@ static void render_end_screen(bool victory, const GameState* game) {
         stat_bar(112, ry+4, SCREEN_WIDTH-146, 8, pct, ROW_COL[i]);
     }
 
-    // 2 buttons
+    // 2 buttons (bottom-anchored: 68px from the bottom edge at i=0, so they
+    // hug the bottom instead of drifting away from it at other SCREEN_HEIGHTs)
     color_t btn0 = victory ? RGBA32(25,95,25,240) : RGBA32(95,20,20,240);
     for (int i = 0; i < 2; i++) {
         bool sel = (i == end_sel);
-        int by = 172 + i*30;
+        int by = SCREEN_HEIGHT - 68 + i*30;
         panel(SCREEN_WIDTH/2-68, by, 136, 24,
               sel ? (i==0 ? btn0 : RGBA32(35,45,95,240)) : RGBA32(22,22,50,220),
               sel ? RGBA32(255,255,180,255) : RGBA32(55,55,100,200));
@@ -495,10 +501,14 @@ int menu_handle_input(GameState* game) {
                     custom_map_menu_enter();
                     game->flow = STATE_CUSTOM_MAP_MENU;
                 } else if (main_sel == 2) {
+                    // -> Rebind in-game actions (Controller Pak)
+                    controls_menu_enter();
+                    game->flow = STATE_CONTROLS_MENU;
+                } else if (main_sel == 3) {
                     // -> Cycle language in place, stay on this menu
                     lang_cycle();
                 }
-                // main_sel == 3: credits (future)
+                // main_sel == 4: credits (future)
             }
             return main_sel;
         }

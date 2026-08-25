@@ -14,6 +14,7 @@ faction_td/
 │
 ├── src/
 │   ├── core/
+│   │   ├── screen.h            [single source of truth: SCREEN_*/WORLD_* size macros]
 │   │   ├── engine.h
 │   │   └── main.c
 │   │
@@ -59,7 +60,9 @@ faction_td/
 │   │   ├── save.h              [Controller Pak persistence]
 │   │   ├── save.c
 │   │   ├── lang.h              [EN/ES localization]
-│   │   └── lang.c
+│   │   ├── lang.c
+│   │   ├── controls.h          [7 remappable in-game actions]
+│   │   └── controls.c
 │   │
 │   ├── ui/
 │   │   ├── menu.h
@@ -69,7 +72,9 @@ faction_td/
 │   │   ├── map_editor.h        [in-game map editor]
 │   │   ├── map_editor.c
 │   │   ├── custom_map_menu.h   [Controller Pak slot browser]
-│   │   └── custom_map_menu.c
+│   │   ├── custom_map_menu.c
+│   │   ├── controls_menu.h     [controls remap screen]
+│   │   └── controls_menu.c
 │   │
 │   └── resources/
 │       ├── resources.h
@@ -88,8 +93,8 @@ faction_td/
 │   │   ├── tile_mountain.png
 │   │   ├── tile_desert.png
 │   │   ├── tile_snow.png
-│   │   ├── tile_lava.png              [generated, not yet assigned to a TerrainType]
-│   │   ├── tile_path.png              [generated, not yet assigned to a TerrainType]
+│   │   ├── tile_lava.png              [TERRAIN_LAVA — hazard, used in Volcanic Pass]
+│   │   ├── tile_path.png              [TERRAIN_PATH — free-form custom map paths]
 │   │   │                              [7 files, 16x16, used at runtime by terrain_compose()]
 │   │   │
 │   │   ├── map_greenfield.png
@@ -127,12 +132,12 @@ faction_td/
 
 TOTALS:
 =======
-- Source files (.c):      22
-- Headers (.h):            24
+- Source files (.c):      24
+- Headers (.h):            27
 - Sprites (PNG, active):   40   (28 units/projectiles + 7 terrain tiles + 4 map refs + 1 reference sheet)
 - Sprite previews (PNG):   40
 - Tools (Python):          3
 - Documentation:           4    (README.md, STRUCTURE.md, FILE_LIST.txt, prompts_graficos.md)
 - Config/build:            2    (makefile, .gitignore)
 - CI:                      1    (.github/workflows/build.yml)
-- TOTAL:                   136 files
+- TOTAL:                   141 files

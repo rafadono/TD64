@@ -34,12 +34,13 @@ faction_td/
 
 ## Complete File Listing
 
-### `src/core/` - Base Engine (2 files)
+### `src/core/` - Base Engine (3 files)
 
 | File | Purpose |
 |---------|-----------|
-| **engine.h** | Main engine header. Includes every subsystem and defines global types (Entity, GameState, GameFlowState — 8 states, including STATE_MAP_EDITOR and STATE_CUSTOM_MAP_MENU) |
-| **main.c** | Main game loop. Input via `joypad_*`, real delta time, render/update dispatch by state |
+| **screen.h** | `SCREEN_WIDTH/HEIGHT` and `WORLD_WIDTH/HEIGHT` — the single source of truth for the game's resolution and the biggest scrollable map size. Dependency-free so world/terrain.h and systems/save.h can derive from it without a circular include |
+| **engine.h** | Main engine header. Includes every subsystem and defines global types (Entity, GameState, GameFlowState — 10 states, including STATE_MAP_EDITOR, STATE_CUSTOM_MAP_MENU, and STATE_CONTROLS_MENU) |
+| **main.c** | Main game loop. Input via `joypad_*` (routed through the remappable-action layer, see systems/controls.h), real delta time, render/update dispatch by state, D-pad cursor movement with camera auto-scroll |
 
 ### `src/config/` - Configuration and Data (4 files)
 
@@ -65,12 +66,12 @@ faction_td/
 
 | File | Purpose |
 |---------|-----------|
-| **terrain.h** | Terrain types, grid, stat modifiers |
-| **terrain.c** | `terrain_compose()` composes the full map once (on load/edit) into an offscreen surface using real textures; `terrain_render()` blits that already-composed surface, one draw call per frame |
-| **maps.h** | MapData struct, map loading functions (fixed and custom) |
-| **maps.c** | Definition of the 4 fixed maps (Greenfield, Desert, Frozen, Volcanic) + `map_load_custom()` for saved/edited maps |
+| **terrain.h** | Terrain types, grid (sized `WORLD_WIDTH x WORLD_HEIGHT`, big enough for the largest map), stat modifiers |
+| **terrain.c** | `terrain_compose()` composes a map's valid area once (on load/edit) into a `WORLD`-sized offscreen surface using real textures; `terrain_render(cam_x, cam_y)` blits a `SCREEN`-sized window of that surface starting at the camera's world position, one draw call per frame regardless of map size |
+| **maps.h** | MapData struct (includes `width`/`height`, the map's actual play-area size), map loading functions (fixed and custom) |
+| **maps.c** | Definition of the 4 fixed maps (Greenfield, Desert, Frozen, Volcanic) — each `WORLD`-sized, tiling their terrain pattern into 4 quadrants and scaling their path 2x/2x — + `map_load_custom()` for saved/edited maps (always `SCREEN`-sized) |
 | **pathfinding.h** | Waypoints, Path, path-following functions |
-| **pathfinding.c** | Pathfinding algorithms (curve, zigzag, spiral, straight) plus `path_init_from_terrain()`, which traces a free-form path painted with `TERRAIN_PATH` tiles in the map editor into real waypoints; `path_follow()` consumes distance per frame instead of moving at a fixed speed (prevents a fast enemy from skipping a waypoint) |
+| **pathfinding.c** | Pathfinding algorithms (curve, zigzag, spiral, straight) plus `path_init_from_terrain()` (traces a free-form path painted with `TERRAIN_PATH` tiles into real waypoints) and `path_scale()` (stretches a preset path onto a bigger canvas); `path_follow()` consumes distance per frame instead of moving at a fixed speed (prevents a fast enemy from skipping a waypoint) |
 
 ### `src/game/` - Game Logic (4 files)
 
@@ -81,7 +82,7 @@ faction_td/
 | **campaign.h** | Campaign struct, campaign functions, `GameDifficulty` enum (Easy/Normal/Hard/Extreme) and its accessors |
 | **campaign.c** | 4 campaigns (one per faction), rival selection, map progression, saves the best score to the Controller Pak on campaign completion; also implements the difficulty scale and its unlock rules (Hard needs 1 completed campaign, Extreme needs all 4) |
 
-### `src/systems/` - Auxiliary Systems (14 files)
+### `src/systems/` - Auxiliary Systems (16 files)
 
 | File | Purpose |
 |---------|-----------|
@@ -89,29 +90,33 @@ faction_td/
 | **score.c** | Multi-factor score: combo, speed bonus, perfect wave, time penalty — wired to wave/map/campaign complete |
 | **leveling.h** | UnitLevel struct, XP functions |
 | **leveling.c** | Tower level-up system (gain XP from kills), capped at level 10 |
-| **effects.h** | Camera shake, particles, floating text |
-| **effects.c** | Visual effects implementation and floating text spawning with real damage numbers |
-| **debug.h** | DebugState struct with every debug toggle |
-| **debug.c** | Debug system: FPS, hitboxes, ranges, AI lines, performance, cheats (wired to real input, L+R+C combo with L/R held) |
+| **effects.h** | Camera (persistent world-space scroll + transient shake), particles, floating text |
+| **effects.c** | `camera_ensure_visible()` (auto-scrolls to keep a world point on screen with a margin — drives all camera movement), particle/floating-text implementation with real damage numbers |
+| **debug.h** | DebugState struct with every overlay/cheat flag |
+| **debug.c** | Unified debug menu: one button (C-up) opens a navigable list of all 18 overlays/cheats, replacing the old scattered C-button toggles and hidden L+R+C-* cheat combos |
 | **audio.h** | Modular audio system header |
 | **audio.c** | Background music (BGM) and sound effect (SFX) playback/init via wav64 and libdragon's mixer — no audio assets loaded yet |
-| **save.h** | Serialized format for custom maps (`CustomMapSave`) and progress (`GameProgress`), `SaveStatus` enum |
+| **save.h** | Serialized formats for custom maps (`CustomMapSave`), progress (`GameProgress`), and remapped controls (`InputConfig`); `SaveStatus` enum |
 | **save.c** | Controller Pak layer: scans all 4 controller ports for a pak, reading/writing "notes" (mempak's high-level API, never raw sector access), formatting only under explicit confirmation |
 | **lang.h** | Language/StringId enums and the `T(StringId)` localization accessor |
 | **lang.c** | English/Spanish string table (`STRINGS[STR_COUNT][LANG_COUNT]`), runtime language cycling |
+| **controls.h** | `PhysicalButton`/`GameAction` enums, the 7 remappable in-game actions and their default bindings |
+| **controls.c** | Binding storage, `action_pressed()` (checks whichever physical button is currently bound to an action), load from/save to the Controller Pak |
 
-### `src/ui/` - User Interface (8 files)
+### `src/ui/` - User Interface (10 files)
 
 | File | Purpose |
 |---------|-----------|
 | **menu.h** | Menu prototypes |
-| **menu.c** | Main menu (4 options: play campaign / custom maps / language / credits), the Easy/Normal/Hard/Extreme difficulty select screen, faction select (also reused to start custom maps), pause, game over/victory |
+| **menu.c** | Main menu (5 options: play campaign / custom maps / controls / language / credits), the Easy/Normal/Hard/Extreme difficulty select screen, faction select (also reused to start custom maps), pause, game over/victory |
 | **ui.h** | HUD prototypes |
 | **ui.c** | In-game HUD: health bar, gold, build panel, tooltips |
 | **map_editor.h** | Map editor prototypes |
 | **map_editor.c** | Editor: paint terrain (including free-form path tiles) on the grid, pick path shape / enemy faction / difficulty / starting gold / starting lives (cycled via Z, adjusted via C-up/C-down), name the map via an on-screen keyboard, clear the grid (hold L+R+B), save to the Controller Pak or play without saving |
 | **custom_map_menu.h** | Custom map menu prototypes |
 | **custom_map_menu.c** | Lists the 8 Controller Pak slots with their saved name (play/edit/delete), handles pak formatting with confirmation |
+| **controls_menu.h** | Controls remap screen prototypes |
+| **controls_menu.c** | Lists the 7 remappable actions; A captures the next button press as a new binding, Z resets to defaults, Start saves to the Controller Pak |
 
 ### `src/resources/` - Asset Loading (2 files)
 
@@ -257,17 +262,19 @@ build/
 ## Project Statistics
 
 ```
-Total source files:       46 files (.c + .h)
-  - Headers (.h):          24
-  - Implementation (.c):   22
+Total source files:       51 files (.c + .h)
+  - Headers (.h):          27
+  - Implementation (.c):   24
 
 Total sprites:             35 generated PNGs (28 units/projectiles + 7 terrain tiles)
                             + 4 reference maps + 1 reference sheet
 Factions:                  4
 Units per faction:         6 (all 24 with a unique active ability)
-Fixed maps:                4
+Fixed maps:                4 (each WORLD_WIDTH x WORLD_HEIGHT = 4x one screen)
 Custom map slots:          8 (Controller Pak)
 Campaigns:                 4
+Remappable actions:        7 (Controller Pak)
+Debug overlays/cheats:     18, in one menu
 ```
 
 ---
@@ -299,14 +306,20 @@ Ares (recommended) or another N64 emulator, or real hardware with a flash cart
 
 ### 5. Debug
 ```
-In game: C-up, C-down, C-left, C-right (debug toggles)
-Cheats:  L+R+C-* with L/R held (godmode, infinite gold, etc)
+In game: C-up opens/closes the debug menu
+Inside it: D-pad selects an overlay or cheat, A toggles it, B closes
 ```
 
 ### 6. Custom Maps
 ```
 Main menu -> CUSTOM MAPS -> pick a slot -> Start to edit
 In the editor: A paints, L/R cycles terrain, Z cycles setting, C-up/down adjusts it, Start saves
+```
+
+### 7. Remap Controls
+```
+Main menu -> CONTROLS -> D-pad to select an action -> A to capture the next button press
+Z resets everything to defaults, Start saves to the Controller Pak, B exits
 ```
 
 ---

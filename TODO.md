@@ -65,6 +65,13 @@ guesses — see the note on each item for why it's here.
       completing at least 1 campaign, Extreme requires all 4. Permissive
       default (unlocked) if no Controller Pak/progress is readable, so
       pak-less players aren't locked out.
+- [x] The 4 fixed campaign maps are now `WORLD_WIDTH x WORLD_HEIGHT`
+      (`src/core/screen.h`) — 4x the area of one screen, tiled as 4 normal
+      maps arranged 2x2 — with the camera auto-scrolling to follow the
+      D-pad cursor (`camera_ensure_visible()`, no separate pan input) and
+      the enemy path scaled 2x/2x to match. Custom maps are unaffected and
+      stay exactly one screen. Fits in the base 4MB without the Expansion
+      Pak (~614KB for the composed terrain surface, still small).
 
 ## Multiplayer
 
@@ -76,11 +83,23 @@ guesses — see the note on each item for why it's here.
 
 - [ ] UI sound feedback (menu navigation, confirm/cancel) — blocked on the
       Audio item above.
-- [ ] A settings/options screen (volume, control remap) once audio exists.
+- [x] Remappable controls: 7 in-game actions (place/cancel/prev-unit/
+      next-unit/upgrade/spawn-wave/pause) rebindable from a new CONTROLS
+      screen on the main menu, persisted to the Controller Pak
+      (`src/systems/controls.h`/`.c`). D-pad movement stays fixed by design,
+      and C-up can't be assigned since it's hardwired to the debug menu.
+- [ ] A volume settings screen once audio exists (control remap above is
+      already done independently of audio).
 - [ ] Transitions/fades between menu states (currently instant cuts).
 - [ ] Accessibility pass on faction palettes for colorblind players — e.g.
       Dawnguard (blue/gold) vs. Veilstorm (cyan/violet) may be hard to tell
       apart for some players at a glance.
+- [x] Unified debug menu: replaced the old scattered C-down/C-left/C-right
+      overlay toggles and the 4 hidden L+R+C-* cheat combos with a single
+      navigable menu (C-up opens it) listing all 18 overlays/cheats. Also
+      fixed a real bug found in the old scheme: C-right doubled as both
+      "toggle performance overlay" and "upgrade tower", both firing on the
+      same press.
 
 ## Balance
 

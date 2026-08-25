@@ -15,6 +15,8 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - [Custom Maps and Map Editor](#custom-maps-and-map-editor)
 - [Controller Pak Saving](#controller-pak-saving)
 - [Campaign Difficulty](#campaign-difficulty)
+- [Camera and Bigger Maps](#camera-and-bigger-maps)
+- [Remappable Controls](#remappable-controls)
 - [Animated Sprites and Textured Terrain](#animated-sprites-and-textured-terrain)
 - [Language](#language)
 - [Debug System](#debug-system)
@@ -73,6 +75,8 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
   progress (see dedicated sections below)
 - A selectable Easy/Normal/Hard/Extreme difficulty for the 4 fixed
   campaigns, with Hard/Extreme unlocked by prior campaign progress
+- The 4 fixed campaign maps are 4x the size of one screen, with the camera
+  auto-scrolling to follow the D-pad cursor — no separate pan control needed
 - Animated sprites (8 frames: idle + walk + attack) generated 100%
   procedurally, no external art
 - Leveling (towers gain XP from kills, up to level 10)
@@ -80,7 +84,8 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 - Visual effects (particles, screen shake, dynamic floating text with real numbers)
 - Modular audio system (background music per map and sound effects)
 - Unique active special ability for each of the 24 units
-- Modern input (libdragon's `joypad_*`) and a full debug system (10+ toggles)
+- Modern input (libdragon's `joypad_*`), 7 remappable in-game actions saved
+  to the Controller Pak, and a unified debug menu (18 overlays/cheats)
 - English/Spanish string-table localization, toggled from the main menu
 
 ---
@@ -89,17 +94,19 @@ Faction-based tower defense for the Nintendo 64, written in C with libdragon.
 
 ### In Game
 
-| Button | Action |
+| Button (default) | Action |
 |-------|--------|
-| D-pad | Move placement cursor |
+| D-pad | Move placement cursor — auto-scrolls the camera on maps bigger than one screen (fixed, not remappable) |
 | A | Place unit / Confirm |
 | B | Cancel selection |
 | L / R | Cycle unit type |
 | Z | Start next wave |
 | Start | Pause |
 | C-right | Upgrade the selected tower |
+| C-up | Open/close the debug menu (fixed, not remappable) |
 
-(The C buttons double as debug overlay toggles — see [Debug System](#debug-system).)
+Every action above except D-pad and C-up can be rebound — see
+[Remappable Controls](#remappable-controls).
 
 ### Custom Map Menu
 
@@ -203,6 +210,51 @@ player's own towers on "Hard" would feel bad rather than challenging.
   resets the campaign difficulty scale back to Normal so the two systems
   never interact.
 
+## Camera and Bigger Maps
+
+The 4 fixed campaign maps are `WORLD_WIDTH x WORLD_HEIGHT`
+(`src/core/screen.h`) — 2x the width and 2x the height of one screen, so 4x
+the playable area, tiled as 4 normal-sized maps arranged 2x2. Custom maps
+(the in-game editor) are unaffected and stay exactly one screen.
+
+- The camera scrolls to follow the D-pad cursor automatically
+  (`camera_ensure_visible()`, `src/systems/effects.c`) as it nears the edge
+  of the visible area — there's no separate pan button or stick control.
+  This is a deliberate ergonomics choice: the N64 controller has 3 separate
+  hand grips (D-pad+L, stick+Z+Start, A/B/C+R), and the core build loop
+  (D-pad cursor + A to place) already lives entirely on the outer two —
+  requiring the stick for camera control would force players to reposition
+  their hand mid-build to reach the center grip.
+- The enemy path and terrain patterns scale/tile proportionally onto the
+  bigger canvas (`src/world/maps.c`, `src/world/pathfinding.c`'s
+  `path_scale()`) rather than being redesigned by hand.
+- A map bigger than one screen still fits comfortably in the base 4MB of
+  RDRAM — no Expansion Pak required. The biggest single cost is the
+  composed terrain surface (`WORLD_WIDTH x WORLD_HEIGHT`, ~614KB), which is
+  a flat, one-time allocation reused across every map regardless of size.
+
+## Remappable Controls
+
+7 in-game actions can be rebound from **CONTROLS** on the main menu: place
+unit, cancel, previous/next unit, upgrade tower, spawn wave, and pause.
+D-pad movement and the debug menu's C-up toggle are intentionally fixed
+(see `src/systems/controls.h`) — same as most games with rebindable
+controls keep movement fixed and only remap action buttons.
+
+| Button | Action |
+|-------|--------|
+| D-pad | Select which action to rebind |
+| A | Capture the next button press as the new binding for the selected action |
+| B | Cancel a capture in progress, or exit the screen if not capturing |
+| Z | Reset every binding to its default |
+| Start | Save the current bindings to the Controller Pak |
+
+Bindings persist to the Controller Pak (any of the 4 ports, same as custom
+maps and progress) and load automatically on boot if a saved config is
+found; otherwise the defaults from the table in [Controls](#controls) apply.
+C-up can't be assigned to an action, since it's hardwired to open the debug
+menu — an action bound to it would become unreachable whenever that menu is open.
+
 ## Animated Sprites and Textured Terrain
 
 All of the game's art is **100% code-generated** (Python + Pillow), with no
@@ -228,59 +280,54 @@ cycles English -> Spanish -> English without restarting. The build-time
 default is English (`LANG_DEFAULT` in `lang.h`). Adding another language
 means adding one more column to the `STRINGS[]` table, with no UI code changes.
 
-### Debug Mode
+### Debug Menu
 
-| Combination | Action |
-|-------------|--------|
-| C-up | Toggle FPS + entity count + memory |
-| C-down | Toggle grid + collision + ranges |
-| C-left | Toggle AI + pathfinding + wave preview |
-| C-right | Toggle performance + economy stats |
+A single button opens it — no combos to remember:
 
-### Cheats (hold L+R + C-button)
+| Button | Action |
+|-------|--------|
+| C-up | Open/close the debug menu |
+| D-pad up/down | Select an overlay or cheat |
+| A | Toggle the selected entry on/off |
+| B | Close the menu |
 
-| Combination | Cheat |
-|-------------|-------|
-| L+R+C-up | Godmode (infinite lives) |
-| L+R+C-down | Infinite gold |
-| L+R+C-left | One-hit kills |
-| L+R+C-right | Fast forward (2x speed) |
+Opening the menu pauses gameplay *input* (D-pad/A are redirected to the
+menu instead of the build cursor) but not the simulation — towers and
+enemies keep moving underneath, so toggling something shows its effect live.
 
 ---
 
 ## Debug System
 
-### 10+ Visual Debug Options
+### 18 Overlays and Cheats, One Menu
 
-Toggled with the C buttons:
+All in a single navigable list (see [Debug Menu](#debug-menu) above) —
+no more hunting for which C-button did what, and no more hidden L+R+C-*
+combos:
 
-1. FPS Counter - Frames per second
-2. Entity Count - Active towers / enemies / projectiles
-3. Memory Stats - Pool usage (128 entities max, 256 particles)
-4. Collision Boxes - Visual hitboxes
-5. Range Circles - Tower attack range circles
-6. Pathfinding Overlay - Enemy path waypoints
-7. Wave Preview - Next wave composition
-8. Economy Debug - Gold/sec, total DPS
-9. AI Targeting Lines - Tower -> enemy lines
-10. Performance Timers - Update time, render time (ms)
-11. Grid Overlay - Visible terrain grid
-12. Damage Numbers - Floating text with real values (on by default)
+**Visual overlays** (1-12): FPS Counter, Entity Count, Memory Stats,
+Collision Boxes, Range Circles, Pathfinding Overlay, Wave Preview, Economy
+Info, AI Targeting Lines, Performance Timers, Grid Overlay, Damage Numbers
+(on by default).
+
+**Cheats** (13-18): Godmode (infinite lives), Infinite Gold, Instant Waves
+(no spawn delay), Slow Motion (0.5x speed), Fast Forward (2x speed, mutually
+exclusive with Slow Motion), One-Hit Kills.
 
 ### Active Cheats Indicator
 
 While a cheat is active, a pulsing red "CHEATS ACTIVE" banner appears in the
 bottom-right corner.
 
-### Using Debug Mode
+### Changing the Defaults
 
-In game_config.h, change the defaults:
+In game_config.h:
 ```c
 #define DEBUG_SHOW_FPS_DEFAULT          1   // 1 = on at startup
 #define DEBUG_SHOW_COLLISION_BOXES      1
 ```
 
-Or toggle at runtime with the C buttons (see table above).
+Or toggle any of them at runtime from the debug menu (C-up).
 
 ---
 
